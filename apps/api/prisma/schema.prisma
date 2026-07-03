@@ -1,0 +1,272 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum TripVisibility {
+  PRIVATE
+  LINK
+  PUBLIC
+}
+
+enum TripRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum PlaceCategory {
+  ATTRACTION
+  FOOD
+  LODGING
+  TRANSPORT
+  SHOPPING
+  OTHER
+}
+
+enum ExpenseCategory {
+  LODGING
+  FOOD
+  TRANSPORT
+  ACTIVITY
+  SHOPPING
+  OTHER
+}
+
+enum ChecklistType {
+  TODO
+  PACKING
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String?
+  name         String
+  avatarUrl    String?
+  authProvider AuthProvider @default(LOCAL)
+  plan         Plan         @default(FREE)
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String?
+  refreshHash       String?
+  defaultCurrency   String       @default("VND")
+  locale            String       @default("vi")
+  aiGenerationsDate DateTime?    @db.Date
+  aiGenerationsCount Int         @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  ownedTrips       Trip[]        @relation("TripOwner")
+  memberships      TripMember[]
+  paidExpenses     Expense[]     @relation("ExpensePayer")
+  splitExpenses    Expense[]     @relation("ExpenseSplits")
+  uploadedAttachments Attachment[] @relation("AttachmentUploader")
+  settlementsFrom  Settlement[]  @relation("SettlementFrom")
+  settlementsTo    Settlement[]  @relation("SettlementTo")
+  guides           Guide[]       @relation("GuideCreator")
+  guidePurchases   GuidePurchase[] @relation("GuideBuyer")
+}
+
+model Trip {
+  id          String         @id @default(cuid())
+  ownerId     String
+  owner       User           @relation("TripOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  destination String
+  coverImage  String?
+  startDate   DateTime       @db.Date
+  endDate     DateTime       @db.Date
+  visibility     TripVisibility @default(PRIVATE)
+  inviteCode     String?        @unique
+  cloneCount     Int            @default(0)
+  budgetAmount   Float?
+  budgetCurrency String         @default("VND")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  members     TripMember[]
+  days        Day[]
+  places      Place[]
+  expenses    Expense[]
+  checklist   ChecklistItem[]
+  attachments Attachment[]
+  settlements Settlement[]
+  guides      Guide[]
+}
+
+model TripMember {
+  tripId    String
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      TripRole @default(EDITOR)
+  createdAt DateTime @default(now())
+
+  @@id([tripId, userId])
+  @@index([userId])
+}
+
+model Day {
+  id     String   @id @default(cuid())
+  tripId String
+  trip   Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  date   DateTime @db.Date
+  order  Int
+
+  places Place[]
+
+  @@unique([tripId, date])
+  @@index([tripId])
+}
+
+model Place {
+  id         String        @id @default(cuid())
+  tripId     String
+  trip       Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayId      String?
+  day        Day?          @relation(fields: [dayId], references: [id], onDelete: SetNull)
+  name       String
+  lat        Float?
+  lng        Float?
+  category   PlaceCategory @default(OTHER)
+  address    String?
+  note       String?
+  order      Int           @default(0)
+  cost       Float?
+  providerId String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  attachments Attachment[]
+
+  @@index([tripId])
+  @@index([dayId])
+}
+
+model Expense {
+  id        String          @id @default(cuid())
+  tripId    String
+  trip      Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title     String
+  amount    Float
+  currency  String          @default("VND")
+  category  ExpenseCategory @default(OTHER)
+  payerId   String
+  payer     User            @relation("ExpensePayer", fields: [payerId], references: [id], onDelete: Cascade)
+  splitWith User[]          @relation("ExpenseSplits")
+  date      DateTime?       @db.Date
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([tripId])
+}
+
+model ChecklistItem {
+  id        String        @id @default(cuid())
+  tripId    String
+  trip      Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  text      String
+  checked   Boolean       @default(false)
+  type      ChecklistType @default(TODO)
+  createdAt DateTime      @default(now())
+
+  @@index([tripId])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  placeId    String?
+  place      Place?   @relation(fields: [placeId], references: [id], onDelete: SetNull)
+  uploaderId String?
+  uploader   User?    @relation("AttachmentUploader", fields: [uploaderId], references: [id], onDelete: SetNull)
+  url        String
+  name       String?
+  type       String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tripId])
+}
+
+model AffiliateClick {
+  id        String   @id @default(cuid())
+  partner   String
+  tripId    String
+  placeId   String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([tripId])
+  @@index([partner])
+  @@index([createdAt])
+}
+
+model Settlement {
+  id         String    @id @default(cuid())
+  tripId     String
+  trip       Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  fromUserId String
+  fromUser   User      @relation("SettlementFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  toUser     User      @relation("SettlementTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  amount     Float
+  currency   String    @default("VND")
+  settled    Boolean   @default(true)
+  settledAt  DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  @@index([tripId])
+}
+
+model Guide {
+  id            String   @id @default(cuid())
+  creatorId     String
+  creator       User     @relation("GuideCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  tripId        String
+  trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  price         Float    @default(0)
+  currency      String   @default("VND")
+  published     Boolean  @default(false)
+  purchaseCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchases GuidePurchase[]
+
+  @@index([creatorId])
+  @@index([tripId])
+  @@index([published])
+}
+
+model GuidePurchase {
+  id           String   @id @default(cuid())
+  guideId      String
+  guide        Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  buyerId      String
+  buyer        User     @relation("GuideBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  clonedTripId String?
+  amount       Float    @default(0)
+  currency     String   @default("VND")
+  createdAt    DateTime @default(now())
+
+  @@unique([guideId, buyerId])
+  @@index([buyerId])
+}

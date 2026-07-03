@@ -1,0 +1,14 @@
+{
+  "name": "Mê Đi – Lên kế hoạch du lịch",
+  "short_name": "Mê Đi",
+  "description": "Lập lịch trình, xem bản đồ, chia chi phí và lên kế hoạch du lịch cùng bạn bè.",
+  "start_url": "/trips",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#1b7a65",
+  "lang": "vi",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

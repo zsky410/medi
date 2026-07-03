@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: medi-postgres
+    environment:
+      POSTGRES_USER: medi
+      POSTGRES_PASSWORD: medi
+      POSTGRES_DB: medi
+    ports:
+      - "5433:5432"
+    volumes:
+      - medi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: medi-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - medi_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  medi_pgdata:
+  medi_redisdata:

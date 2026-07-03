@@ -1,0 +1,26 @@
+{
+  "name": "medi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Mê Đi (medi) - Travel planning SaaS",
+  "scripts": {
+    "dev": "turbo run dev --filter=@medi/api --filter=@medi/web",
+    "dev:all": "turbo run dev",
+    "dev:stop": "node scripts/free-dev-ports.mjs",
+    "dev:setup": "node scripts/wait-for-deps.mjs && node scripts/free-dev-ports.mjs && pnpm dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter @medi/api db:migrate",
+    "db:seed": "pnpm --filter @medi/api db:seed"
+  },
+  "packageManager": "pnpm@10.24.0",
+  "devDependencies": {
+    "turbo": "^2.10.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "^19.0.0",
+      "@types/react-dom": "^19.0.0"
+    }
+  }
+}
