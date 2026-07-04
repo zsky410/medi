@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { CATEGORY_LABELS, dayColor, formatDateRange, formatDayLabel, formatMoney } from "@/lib/format";
 import { Logo } from "@/components/logo";
 import { Button, Spinner } from "@/components/ui";
-import type { MapPlace } from "@/components/trip/trip-map";
+import { placesToItineraryItems } from "@/components/trip/trip-map";
 
 const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m.TripMap), {
   ssr: false,
@@ -63,15 +63,9 @@ function RemixButton({ tripId }: { tripId: string }) {
 export function PublicTripView({ trip }: { trip: PublicTripDto }) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
 
-  const mapPlaces: MapPlace[] = useMemo(() => {
-    const places: MapPlace[] = [];
-    trip.days.forEach((day, dayIdx) => {
-      day.places.forEach((p, i) => {
-        places.push({ ...p, color: dayColor(dayIdx), label: String(i + 1) });
-      });
-    });
-    trip.savedPlaces.forEach((p) => places.push({ ...p, color: "#8A7563", label: "★" }));
-    return places;
+  const itineraryItems = useMemo(() => {
+    const allPlaces = trip.days.flatMap((d) => d.places);
+    return placesToItineraryItems(allPlaces.length > 0 ? allPlaces : trip.savedPlaces);
   }, [trip]);
 
   return (
@@ -206,7 +200,12 @@ export function PublicTripView({ trip }: { trip: PublicTripDto }) {
 
           {/* Right Column: Sticky Map */}
           <div className="order-1 h-64 overflow-hidden rounded-2xl border-2 border-[#F3E3D3] sm:h-80 lg:order-2 lg:h-[calc(100dvh-200px)] lg:sticky lg:top-24 shadow-sm">
-            <TripMap places={mapPlaces} selectedPlaceId={selectedPlaceId} onSelect={setSelectedPlaceId} />
+            <TripMap
+              itineraryItems={itineraryItems}
+              activeItemId={selectedPlaceId}
+              focusItemId={selectedPlaceId}
+              onMarkerClick={setSelectedPlaceId}
+            />
           </div>
         </div>
       </main>

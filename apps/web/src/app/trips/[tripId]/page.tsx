@@ -7,11 +7,12 @@ import type { PlaceDto, TripAffiliateDto, TripDetailDto, TripRealtimeEvent } fro
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTripRealtime } from "@/lib/socket";
-import { dayColor, formatDateRange } from "@/lib/format";
+import { formatDateRange } from "@/lib/format";
 import { AppHeader } from "@/components/app-header";
 import { RequireAuth } from "@/components/require-auth";
 import { Avatar, Button, Spinner } from "@/components/ui";
 import { ItineraryBoard } from "@/components/trip/itinerary-board";
+import { DiscoverPlacesBar } from "@/components/trip/discover-places-bar";
 import { PlaceSearchModal } from "@/components/trip/place-search";
 import { PlaceEditModal } from "@/components/trip/place-edit-modal";
 import { ExpensesTab } from "@/components/trip/expenses-tab";
@@ -24,7 +25,7 @@ import { MembersModal } from "@/components/trip/members-modal";
 import { ShareModal } from "@/components/trip/share-modal";
 import { ExportMapsButton, loadOfflineSnapshot, saveOfflineSnapshot } from "@/components/trip/pro-tools";
 import { TripTabSidebar, type TripTab } from "@/components/trip/trip-tab-sidebar";
-import type { MapPlace } from "@/components/trip/trip-map";
+import { placesToItineraryItems, type MapPreviewPin } from "@/components/trip/trip-map";
 
 const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m.TripMap), {
   ssr: false,
@@ -41,6 +42,8 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   const isPro = user?.plan === "PRO";
   const [tab, setTab] = useState<TripTab>("itinerary");
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
+  const [mapPreview, setMapPreview] = useState<MapPreviewPin | null>(null);
   const [searchTarget, setSearchTarget] = useState<{ dayId: string | null; label: string } | null>(null);
   const [editingPlace, setEditingPlace] = useState<PlaceDto | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
@@ -95,19 +98,36 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   );
   useTripRealtime(tripId, onRealtimeEvent);
 
-  const mapPlaces: MapPlace[] = useMemo(() => {
+  const mapDayId = useMemo(() => {
+    if (!trip) return null;
+    if (selectedPlaceId) {
+      const day = trip.days.find((d) => d.places.some((p) => p.id === selectedPlaceId));
+      if (day) return day.id;
+    }
+    const firstWithPlaces = trip.days.find((d) => d.places.length > 0);
+    return firstWithPlaces?.id ?? trip.days[0]?.id ?? null;
+  }, [trip, selectedPlaceId]);
+
+  const mapDayLabel = useMemo(() => {
+    if (!trip || !mapDayId) return "";
+    const idx = trip.days.findIndex((d) => d.id === mapDayId);
+    return idx >= 0 ? `Ngày ${idx + 1}` : "";
+  }, [trip, mapDayId]);
+
+  const mapDayPlaces = useMemo(() => {
     if (!trip) return [];
-    const places: MapPlace[] = [];
-    trip.days.forEach((day, dayIdx) => {
-      day.places.forEach((p, i) => {
-        places.push({ ...p, color: dayColor(dayIdx), label: String(i + 1) });
-      });
-    });
-    trip.unassignedPlaces.forEach((p) => {
-      places.push({ ...p, color: "#78716c", label: "★" });
-    });
-    return places;
-  }, [trip]);
+    if (mapDayId) {
+      return trip.days.find((d) => d.id === mapDayId)?.places ?? [];
+    }
+    return trip.days[0]?.places ?? [];
+  }, [trip, mapDayId]);
+
+  const itineraryItems = useMemo(
+    () => placesToItineraryItems(mapDayPlaces),
+    [mapDayPlaces],
+  );
+
+  const activeMapItemId = hoveredPlaceId ?? selectedPlaceId;
 
   if (!trip) {
     if (isLoading) {
@@ -182,11 +202,23 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   canEdit={trip.myRole !== "VIEWER"}
                   onViewExpenses={() => setTab("expenses")}
                 />
+                <DiscoverPlacesBar
+                  tripId={trip.id}
+                  dayId={mapDayId}
+                  dayLabel={mapDayLabel}
+                  canEdit={trip.myRole !== "VIEWER"}
+                  onPreview={setMapPreview}
+                  onPlaceAdded={(id) => {
+                    setMapPreview(null);
+                    setSelectedPlaceId(id);
+                  }}
+                />
                 <ItineraryBoard
                   trip={trip}
                   selectedPlaceId={selectedPlaceId}
                   placeDeals={placeDeals}
                   onSelectPlace={setSelectedPlaceId}
+                  onHoverPlace={setHoveredPlaceId}
                   onAddPlace={(dayId, label) => setSearchTarget({ dayId, label })}
                   onEditPlace={setEditingPlace}
                   isPro={isPro}
@@ -195,7 +227,13 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                 <ImportBookingPanel trip={trip} canEdit={trip.myRole !== "VIEWER"} />
               </div>
               <div className="order-1 h-52 shrink-0 border-b border-[#F3E3D3] bg-white sm:h-64 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-[4] lg:border-b-0 lg:border-l">
-                <TripMap places={mapPlaces} selectedPlaceId={selectedPlaceId} onSelect={setSelectedPlaceId} />
+                <TripMap
+                  itineraryItems={itineraryItems}
+                  activeItemId={activeMapItemId}
+                  focusItemId={selectedPlaceId}
+                  previewPin={mapPreview}
+                  onMarkerClick={setSelectedPlaceId}
+                />
               </div>
             </div>
           ) : (

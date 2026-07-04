@@ -44,6 +44,7 @@ function PlaceItem({
   canEdit,
   deal,
   onSelect,
+  onHoverPlace,
   onEdit,
   onDelete,
 }: {
@@ -54,6 +55,7 @@ function PlaceItem({
   canEdit: boolean;
   deal?: PlaceDealDto;
   onSelect: () => void;
+  onHoverPlace?: (id: string | null) => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -82,7 +84,12 @@ function PlaceItem({
           ⠿
         </button>
       )}
-      <button onClick={onSelect} className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left">
+      <button
+        onClick={onSelect}
+        onMouseEnter={() => onHoverPlace?.(place.id)}
+        onMouseLeave={() => onHoverPlace?.(null)}
+        className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left"
+      >
         <span
           className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-display font-extrabold text-white shadow-sm border border-white/20"
           style={{ background: color }}
@@ -212,6 +219,7 @@ export function ItineraryBoard({
   selectedPlaceId,
   placeDeals,
   onSelectPlace,
+  onHoverPlace,
   onAddPlace,
   onEditPlace,
   isPro = false,
@@ -220,6 +228,7 @@ export function ItineraryBoard({
   selectedPlaceId: string | null;
   placeDeals?: Map<string, PlaceDealDto>;
   onSelectPlace: (id: string) => void;
+  onHoverPlace?: (id: string | null) => void;
   onAddPlace: (dayId: string | null, dayLabel: string) => void;
   onEditPlace: (place: PlaceDto) => void;
   isPro?: boolean;
@@ -334,6 +343,7 @@ export function ItineraryBoard({
           canEdit={canEdit}
           deal={placeDeals?.get(placeId)}
           onSelect={() => onSelectPlace(placeId)}
+          onHoverPlace={onHoverPlace}
           onEdit={() => onEditPlace(place)}
           onDelete={() => deleteMutation.mutate(placeId)}
         />

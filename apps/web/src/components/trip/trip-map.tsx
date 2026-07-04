@@ -4,101 +4,201 @@ import { useEffect, useRef } from "react";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import type { PlaceDto } from "@medi/types";
 
-export interface MapPlace extends PlaceDto {
-  color: string;
-  label: string;
-}
-
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
+const MARKER_BASE =
+  "medi-itinerary-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-all duration-200 cursor-pointer";
+const MARKER_DEFAULT = `${MARKER_BASE} bg-blue-600 hover:bg-blue-700`;
+const MARKER_ACTIVE = `${MARKER_BASE} bg-[#FF6B2C] scale-125 shadow-xl ring-4 ring-[#FF6B2C]/30 z-10`;
+
+export interface ItineraryMapItem {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  visit_order: number;
+}
+
+export interface MapPreviewPin {
+  latitude: number;
+  longitude: number;
+  name?: string;
+}
+
+interface MarkerEntry {
+  marker: Marker;
+  element: HTMLButtonElement;
+  item: ItineraryMapItem;
+}
+
+export function placesToItineraryItems(places: PlaceDto[]): ItineraryMapItem[] {
+  return places
+    .filter((p) => p.lat != null && p.lng != null)
+    .map((p, index) => ({
+      id: p.id,
+      name: p.name,
+      latitude: p.lat!,
+      longitude: p.lng!,
+      visit_order: index + 1,
+    }));
+}
+
+function applyMarkerStyle(element: HTMLButtonElement, isActive: boolean) {
+  element.className = isActive ? MARKER_ACTIVE : MARKER_DEFAULT;
+}
+
+function createMarkerElement(item: ItineraryMapItem, isActive: boolean): HTMLButtonElement {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = isActive ? MARKER_ACTIVE : MARKER_DEFAULT;
+  el.textContent = String(item.visit_order);
+  el.setAttribute("aria-label", `${item.visit_order}. ${item.name}`);
+  el.title = item.name;
+  return el;
+}
+
 export function TripMap({
-  places,
-  selectedPlaceId,
-  onSelect,
+  itineraryItems,
+  activeItemId = null,
+  focusItemId = null,
+  previewPin = null,
+  onMarkerClick,
 }: {
-  places: MapPlace[];
-  selectedPlaceId: string | null;
-  onSelect: (placeId: string) => void;
+  itineraryItems: ItineraryMapItem[];
+  /** Highlight marker (hover or selection). */
+  activeItemId?: string | null;
+  /** Pan/zoom map to this item (typically click selection only). */
+  focusItemId?: string | null;
+  /** Temporary pin while browsing discover search results. */
+  previewPin?: MapPreviewPin | null;
+  onMarkerClick?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
-  const markersRef = useRef<Map<string, Marker>>(new Map());
-  const fittedRef = useRef(false);
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
+  const previewMarkerRef = useRef<Marker | null>(null);
+  const fittedKeyRef = useRef("");
+  const onMarkerClickRef = useRef(onMarkerClick);
+  const activeItemIdRef = useRef(activeItemId);
+  const focusItemIdRef = useRef(focusItemId);
 
+  onMarkerClickRef.current = onMarkerClick;
+  activeItemIdRef.current = activeItemId;
+  focusItemIdRef.current = focusItemId;
+
+  // Init map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE,
-      center: [106.7, 10.78], // default: Vietnam
+      center: [106.7, 10.78],
       zoom: 5,
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
+
     return () => {
+      markersRef.current.forEach(({ marker }) => marker.remove());
+      markersRef.current.clear();
+      previewMarkerRef.current?.remove();
+      previewMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
-      markersRef.current.clear();
-      fittedRef.current = false;
+      fittedKeyRef.current = "";
     };
   }, []);
 
-  // Rebuild markers whenever places change.
+  // Rebuild markers when itinerary changes (day switch, add/remove places).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    markersRef.current.forEach((m) => m.remove());
+    const itemsKey = itineraryItems.map((i) => `${i.id}:${i.visit_order}`).join("|");
+    const shouldRefit = itemsKey !== fittedKeyRef.current;
+
+    markersRef.current.forEach(({ marker }) => marker.remove());
     markersRef.current.clear();
 
-    const located = places.filter((p) => p.lat != null && p.lng != null);
-    for (const place of located) {
-      const el = document.createElement("button");
-      el.className = "medi-marker";
-      el.style.cssText = [
-        `background:${place.color}`,
-        "width:28px;height:28px;border-radius:50% 50% 50% 0",
-        "transform:rotate(-45deg)",
-        "border:2px solid white",
-        "box-shadow:0 2px 6px rgba(0,0,0,.3)",
-        "cursor:pointer",
-        "display:flex;align-items:center;justify-content:center",
-      ].join(";");
-      const inner = document.createElement("span");
-      inner.textContent = place.label;
-      inner.style.cssText = "transform:rotate(45deg);color:white;font-size:11px;font-weight:700";
-      el.appendChild(inner);
+    for (const item of itineraryItems) {
+      const isActive = item.id === activeItemIdRef.current;
+      const el = createMarkerElement(item, isActive);
+
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        onSelect(place.id);
+        onMarkerClickRef.current?.(item.id);
       });
 
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
-        .setLngLat([place.lng!, place.lat!])
-        .setPopup(new maplibregl.Popup({ offset: 24, closeButton: false }).setText(place.name))
+      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+        .setLngLat([item.longitude, item.latitude])
         .addTo(map);
-      markersRef.current.set(place.id, marker);
+
+      markersRef.current.set(item.id, { marker, element: el, item });
     }
 
-    if (!fittedRef.current && located.length > 0) {
-      fittedRef.current = true;
+    const located = itineraryItems.length > 0;
+    if (shouldRefit && located) {
+      fittedKeyRef.current = itemsKey;
       const bounds = new maplibregl.LngLatBounds();
-      located.forEach((p) => bounds.extend([p.lng!, p.lat!]));
-      map.fitBounds(bounds, { padding: 60, maxZoom: 14, duration: 0 });
+      itineraryItems.forEach((item) => bounds.extend([item.longitude, item.latitude]));
+      map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: shouldRefit ? 600 : 0 });
+    } else if (!located) {
+      fittedKeyRef.current = "";
     }
-  }, [places, onSelect]);
+  }, [itineraryItems]);
 
-  // Fly to the selected place.
+  // Highlight active marker (hover or selection).
+  useEffect(() => {
+    markersRef.current.forEach(({ element }, id) => {
+      applyMarkerStyle(element, id === activeItemId);
+    });
+  }, [activeItemId]);
+
+  // Fly to focused item when user clicks list or marker.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedPlaceId) return;
-    const marker = markersRef.current.get(selectedPlaceId);
-    if (marker) {
-      map.flyTo({ center: marker.getLngLat(), zoom: Math.max(map.getZoom(), 13) });
-      marker.togglePopup();
-    }
-  }, [selectedPlaceId]);
+    if (!map || !focusItemId) return;
+    const entry = markersRef.current.get(focusItemId);
+    if (!entry) return;
+
+    map.flyTo({
+      center: [entry.item.longitude, entry.item.latitude],
+      zoom: Math.max(map.getZoom(), 15),
+      duration: 700,
+      essential: true,
+    });
+  }, [focusItemId]);
+
+  // Preview pin while discovering places (hover on search result).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    previewMarkerRef.current?.remove();
+    previewMarkerRef.current = null;
+
+    if (!previewPin) return;
+
+    const el = document.createElement("div");
+    el.className =
+      "flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-[#FF6B2C] shadow-lg ring-4 ring-[#FF6B2C]/25 animate-pulse";
+    el.innerHTML = `<span class="text-lg" aria-hidden="true">📍</span>`;
+    if (previewPin.name) el.title = previewPin.name;
+
+    const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+      .setLngLat([previewPin.longitude, previewPin.latitude])
+      .addTo(map);
+    previewMarkerRef.current = marker;
+
+    map.flyTo({
+      center: [previewPin.longitude, previewPin.latitude],
+      zoom: Math.max(map.getZoom(), 15),
+      duration: 650,
+      essential: true,
+    });
+  }, [previewPin]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
