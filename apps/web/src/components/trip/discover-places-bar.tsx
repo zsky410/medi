@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ClipboardList, MapPin, StickyNote } from "lucide-react";
-import type { CreatePlaceInput, GeoSearchResult, PlaceDto } from "@medi/types";
+import type { CreatePlaceInput, GeoAutocompleteResult, GeoSearchResult, PlaceDto } from "@medi/types";
 import { api } from "@/lib/api";
 import { guessCategory } from "@/lib/place-category";
 import { Spinner } from "@/components/ui";
@@ -11,15 +11,11 @@ import type { MapPreviewPin } from "@/components/trip/trip-map";
 
 export function DiscoverPlacesBar({
   tripId,
-  dayId,
-  dayLabel,
   canEdit,
   onPreview,
   onPlaceAdded,
 }: {
   tripId: string;
-  dayId: string | null;
-  dayLabel: string;
   canEdit: boolean;
   onPreview: (pin: MapPreviewPin | null) => void;
   onPlaceAdded: (placeId: string) => void;
@@ -28,10 +24,12 @@ export function DiscoverPlacesBar({
   const rootRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [results, setResults] = useState<GeoSearchResult[]>([]);
+  const [results, setResults] = useState<GeoAutocompleteResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const searchCacheRef = useRef(new Map<string, GeoAutocompleteResult[]>());
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
@@ -46,55 +44,67 @@ export function DiscoverPlacesBar({
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
+    const requestId = ++requestIdRef.current;
     if (query.trim().length < 2) {
       setResults([]);
       setMessage("");
+      setSearching(false);
       onPreview(null);
       return;
     }
     debounceRef.current = setTimeout(async () => {
+      const normalizedQuery = query.trim();
       setSearching(true);
       setMessage("");
       try {
-        const data = await api<GeoSearchResult[]>(`/geo/search?q=${encodeURIComponent(query.trim())}`);
+        const cacheKey = normalizedQuery.toLocaleLowerCase("vi-VN");
+        const cached = searchCacheRef.current.get(cacheKey);
+        const data = cached ?? await api<GeoAutocompleteResult[]>(`/geo/autocomplete?q=${encodeURIComponent(normalizedQuery)}`);
+        if (!cached && data.length > 0) searchCacheRef.current.set(cacheKey, data);
+        if (requestId !== requestIdRef.current) return;
         setResults(data);
         setOpen(true);
         if (data.length === 0) setMessage("Không tìm thấy địa điểm");
       } catch {
+        if (requestId !== requestIdRef.current) return;
         setMessage("Tìm kiếm thất bại");
         setResults([]);
       } finally {
-        setSearching(false);
+        if (requestId === requestIdRef.current) setSearching(false);
       }
-    }, 350);
+    }, 450);
     return () => clearTimeout(debounceRef.current);
   }, [query, onPreview]);
 
   const addMutation = useMutation({
-    mutationFn: (result: GeoSearchResult) =>
-      api<PlaceDto>(`/trips/${tripId}/places`, {
+    mutationFn: async (result: GeoAutocompleteResult) => {
+      const place = result.lat != null && result.lng != null
+        ? result as GeoSearchResult
+        : await api<GeoSearchResult>(`/geo/place?providerId=${encodeURIComponent(result.providerId)}`);
+      return api<PlaceDto>(`/trips/${tripId}/places`, {
         method: "POST",
         body: JSON.stringify({
-          dayId,
-          name: result.name,
-          lat: result.lat,
-          lng: result.lng,
-          address: result.address,
-          category: guessCategory(result.category),
-          providerId: result.providerId,
+          dayId: null,
+          name: place.name,
+          lat: place.lat,
+          lng: place.lng,
+          address: place.address,
+          category: guessCategory(place.category),
+          providerId: place.providerId,
         } satisfies CreatePlaceInput),
-      }),
+      });
+    },
     onSuccess: (place) => {
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       setQuery("");
       setResults([]);
       setOpen(false);
-      onPreview(null);
       onPlaceAdded(place.id);
     },
   });
 
-  function previewResult(result: GeoSearchResult) {
+  function previewResult(result: GeoAutocompleteResult) {
+    if (result.lat == null || result.lng == null) return;
     onPreview({ latitude: result.lat, longitude: result.lng, name: result.name });
   }
 
@@ -145,12 +155,6 @@ export function DiscoverPlacesBar({
             <ClipboardList size={18} />
           </button>
         </div>
-
-        {dayLabel && (
-          <p className="mt-2 text-[10px] font-bold text-[#8A7563]">
-            Thêm vào: <span className="text-brand-600">{dayLabel}</span>
-          </p>
-        )}
 
         {open && (searching || results.length > 0 || message) && (
           <ul

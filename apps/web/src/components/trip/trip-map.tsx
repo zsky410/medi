@@ -8,10 +8,14 @@ const GOONG_STYLE = (mapKey?: string) =>
   mapKey ? `https://tiles.goong.io/assets/goong_map_web.json?api_key=${encodeURIComponent(mapKey)}` : null;
 const FALLBACK_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
+// NOTE: MapLibre positions markers by writing `transform: translate(...)` onto
+// this element every frame. Transitioning `transform` (e.g. `transition-all`)
+// makes the marker lag/float behind the map instead of staying pinned, so we
+// only transition color/shadow and avoid transform-based scaling here.
 const MARKER_BASE =
-  "medi-itinerary-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-all duration-200 cursor-pointer";
+  "medi-itinerary-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-[background-color,box-shadow] duration-200 cursor-pointer";
 const MARKER_DEFAULT = `${MARKER_BASE} bg-blue-600 hover:bg-blue-700`;
-const MARKER_ACTIVE = `${MARKER_BASE} bg-[#FF6B2C] scale-125 shadow-xl ring-4 ring-[#FF6B2C]/30 z-10`;
+const MARKER_ACTIVE = `${MARKER_BASE} bg-[#FF6B2C] shadow-xl ring-4 ring-[#FF6B2C]/40 z-10`;
 
 export interface ItineraryMapItem {
   id: string;
@@ -59,6 +63,15 @@ function createMarkerElement(item: ItineraryMapItem, isActive: boolean): HTMLBut
   return el;
 }
 
+function getMapErrorText(event: unknown): string {
+  if (!event || typeof event !== "object") return "";
+  const error = "error" in event ? event.error : event;
+  if (!error || typeof error !== "object") return "";
+  const message = "message" in error && typeof error.message === "string" ? error.message : "";
+  const url = "url" in error && typeof error.url === "string" ? error.url : "";
+  return `${message} ${url}`;
+}
+
 export function TripMap({
   itineraryItems,
   activeItemId = null,
@@ -104,6 +117,16 @@ export function TripMap({
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
+
+    let switchedToFallbackStyle = false;
+    map.on("error", (event) => {
+      if (switchedToFallbackStyle || style === FALLBACK_STYLE) return;
+      const errorText = getMapErrorText(event);
+      if (!errorText.includes("tiles.goong.io")) return;
+
+      switchedToFallbackStyle = true;
+      map.setStyle(FALLBACK_STYLE);
+    });
 
     // The itinerary panel can be resized, so keep MapLibre's canvas in sync.
     const resizeObserver = new ResizeObserver(() => map.resize());

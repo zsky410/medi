@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { CreatePlaceInput, GeoSearchResult, PlaceDto } from "@medi/types";
+import type { CreatePlaceInput, GeoAutocompleteResult, GeoSearchResult, PlaceDto } from "@medi/types";
 import { api } from "@/lib/api";
 import { guessCategory } from "@/lib/place-category";
 import { Input, Modal, Spinner } from "@/components/ui";
@@ -22,10 +22,12 @@ export function PlaceSearchModal({
 }) {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<GeoSearchResult[]>([]);
+  const [results, setResults] = useState<GeoAutocompleteResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [message, setMessage] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const searchCacheRef = useRef(new Map<string, GeoAutocompleteResult[]>());
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (!open) {
@@ -37,40 +39,53 @@ export function PlaceSearchModal({
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
+    const requestId = ++requestIdRef.current;
     if (query.trim().length < 2) {
       setResults([]);
+      setMessage("");
+      setSearching(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
+      const normalizedQuery = query.trim();
       setSearching(true);
       setMessage("");
       try {
-        const data = await api<GeoSearchResult[]>(`/geo/search?q=${encodeURIComponent(query.trim())}`);
+        const cacheKey = normalizedQuery.toLocaleLowerCase("vi-VN");
+        const cached = searchCacheRef.current.get(cacheKey);
+        const data = cached ?? await api<GeoAutocompleteResult[]>(`/geo/autocomplete?q=${encodeURIComponent(normalizedQuery)}`);
+        if (!cached && data.length > 0) searchCacheRef.current.set(cacheKey, data);
+        if (requestId !== requestIdRef.current) return;
         setResults(data);
         if (data.length === 0) setMessage("Không tìm thấy địa điểm nào");
       } catch {
+        if (requestId !== requestIdRef.current) return;
         setMessage("Tìm kiếm thất bại, thử lại sau");
       } finally {
-        setSearching(false);
+        if (requestId === requestIdRef.current) setSearching(false);
       }
-    }, 400);
+    }, 450);
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
   const addMutation = useMutation({
-    mutationFn: (result: GeoSearchResult) =>
-      api<PlaceDto>(`/trips/${tripId}/places`, {
+    mutationFn: async (result: GeoAutocompleteResult) => {
+      const place = result.lat != null && result.lng != null
+        ? result as GeoSearchResult
+        : await api<GeoSearchResult>(`/geo/place?providerId=${encodeURIComponent(result.providerId)}`);
+      return api<PlaceDto>(`/trips/${tripId}/places`, {
         method: "POST",
         body: JSON.stringify({
           dayId,
-          name: result.name,
-          lat: result.lat,
-          lng: result.lng,
-          address: result.address,
-          category: guessCategory(result.category),
-          providerId: result.providerId,
+          name: place.name,
+          lat: place.lat,
+          lng: place.lng,
+          address: place.address,
+          category: guessCategory(place.category),
+          providerId: place.providerId,
         } satisfies CreatePlaceInput),
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
       onClose();

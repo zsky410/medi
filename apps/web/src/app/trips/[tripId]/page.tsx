@@ -155,19 +155,16 @@ function TripDetailContent({ tripId }: { tripId: string }) {
     return firstWithPlaces?.id ?? trip.days[0]?.id ?? null;
   }, [trip, selectedPlaceId]);
 
-  const mapDayLabel = useMemo(() => {
-    if (!trip || !mapDayId) return "";
-    const idx = trip.days.findIndex((d) => d.id === mapDayId);
-    return idx >= 0 ? `Ngày ${idx + 1}` : "";
-  }, [trip, mapDayId]);
-
   const mapDayPlaces = useMemo(() => {
     if (!trip) return [];
+    if (selectedPlaceId && trip.unassignedPlaces.some((p) => p.id === selectedPlaceId)) {
+      return trip.unassignedPlaces;
+    }
     if (mapDayId) {
       return trip.days.find((d) => d.id === mapDayId)?.places ?? [];
     }
     return trip.days[0]?.places ?? [];
-  }, [trip, mapDayId]);
+  }, [trip, mapDayId, selectedPlaceId]);
 
   const itineraryItems = useMemo(
     () => placesToItineraryItems(mapDayPlaces),
@@ -257,8 +254,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                 />
                 <DiscoverPlacesBar
                   tripId={trip.id}
-                  dayId={mapDayId}
-                  dayLabel={mapDayLabel}
                   canEdit={trip.myRole !== "VIEWER"}
                   onPreview={setMapPreview}
                   onPlaceAdded={(id) => {

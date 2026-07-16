@@ -364,6 +364,15 @@ export function ItineraryBoard({
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-5 text-left">
+        <DayColumn
+          containerId={UNASSIGNED}
+          title="Địa điểm khám phá"
+          placeIds={containers[UNASSIGNED] ?? []}
+          canEdit={canEdit}
+          onAdd={() => onAddPlace(null, "Địa điểm khám phá")}
+        >
+          {renderPlaces(UNASSIGNED)}
+        </DayColumn>
         {trip.days.map((day, i) => (
           <DayColumn
             key={day.id}
@@ -379,15 +388,6 @@ export function ItineraryBoard({
             {renderPlaces(day.id)}
           </DayColumn>
         ))}
-        <DayColumn
-          containerId={UNASSIGNED}
-          title="Đã lưu (chưa xếp ngày) 📂"
-          placeIds={containers[UNASSIGNED] ?? []}
-          canEdit={canEdit}
-          onAdd={() => onAddPlace(null, "Đã lưu")}
-        >
-          {renderPlaces(UNASSIGNED)}
-        </DayColumn>
       </div>
     </DndContext>
   );
