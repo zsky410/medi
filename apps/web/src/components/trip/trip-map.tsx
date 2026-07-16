@@ -4,7 +4,9 @@ import { useEffect, useRef } from "react";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import type { PlaceDto } from "@medi/types";
 
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const GOONG_STYLE = (mapKey?: string) =>
+  mapKey ? `https://tiles.goong.io/assets/goong_map_web.json?api_key=${encodeURIComponent(mapKey)}` : null;
+const FALLBACK_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
 const MARKER_BASE =
   "medi-itinerary-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-all duration-200 cursor-pointer";
@@ -90,9 +92,12 @@ export function TripMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const goongMapKey = process.env.NEXT_PUBLIC_GOONG_MAP_KEY;
+    const style = GOONG_STYLE(goongMapKey) ?? FALLBACK_STYLE;
+
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE,
+      style,
       center: [106.7, 10.78],
       zoom: 5,
       attributionControl: { compact: true },
@@ -100,7 +105,12 @@ export function TripMap({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
 
+    // The itinerary panel can be resized, so keep MapLibre's canvas in sync.
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+
     return () => {
+      resizeObserver.disconnect();
       markersRef.current.forEach(({ marker }) => marker.remove());
       markersRef.current.clear();
       previewMarkerRef.current?.remove();

@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import net from "node:net";
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { IoAdapter } from "@nestjs/platform-socket.io";
@@ -7,13 +8,60 @@ import Redis from "ioredis";
 import type { ServerOptions } from "socket.io";
 import { AppModule } from "./app.module";
 
+const DEFAULT_REDIS_URL = "redis://127.0.0.1:6380";
+
+async function waitForTcp(host: string, port: number, timeoutMs = 60_000): Promise<void> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const socket = net.connect({ host, port }, () => {
+          socket.end();
+          resolve();
+        });
+        socket.on("error", reject);
+      });
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  throw new Error(`Timed out waiting for ${host}:${port}`);
+}
+
+function parseRedisEndpoint(url: string): { host: string; port: number } {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname || "127.0.0.1",
+    port: parsed.port ? Number(parsed.port) : 6379,
+  };
+}
+
 class RedisIoAdapter extends IoAdapter {
   private adapterConstructor?: ReturnType<typeof createAdapter>;
 
   async connectToRedis(url: string): Promise<void> {
-    const pubClient = new Redis(url, { lazyConnect: true });
+    const { host, port } = parseRedisEndpoint(url);
+    await waitForTcp(host, port);
+
+    const pubClient = new Redis(url, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
+      enableOfflineQueue: false,
+    });
     const subClient = pubClient.duplicate();
-    await Promise.all([pubClient.connect(), subClient.connect()]);
+    pubClient.on("error", () => {});
+    subClient.on("error", () => {});
+
+    try {
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+    } catch (err) {
+      pubClient.disconnect();
+      subClient.disconnect();
+      throw err;
+    }
+
     this.adapterConstructor = createAdapter(pubClient, subClient);
   }
 
@@ -68,7 +116,7 @@ async function bootstrap() {
 
   const redisAdapter = new RedisIoAdapter(app);
   try {
-    await redisAdapter.connectToRedis(process.env.REDIS_URL ?? "redis://localhost:6379");
+    await redisAdapter.connectToRedis(process.env.REDIS_URL ?? DEFAULT_REDIS_URL);
     app.useWebSocketAdapter(redisAdapter);
   } catch (err) {
     // Realtime still works single-instance without Redis; log and continue.

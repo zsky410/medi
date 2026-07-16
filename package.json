@@ -4,18 +4,21 @@
   "version": "0.1.0",
   "description": "Mê Đi (medi) - Travel planning SaaS",
   "scripts": {
-    "dev": "turbo run dev --filter=@medi/api --filter=@medi/web",
+    "dev": "node scripts/wait-for-deps.mjs && node scripts/free-dev-ports.mjs && turbo run dev --filter=@medi/api --filter=@medi/web",
     "dev:all": "turbo run dev",
     "dev:stop": "node scripts/free-dev-ports.mjs",
-    "dev:setup": "node scripts/wait-for-deps.mjs && node scripts/free-dev-ports.mjs && pnpm dev",
+    "dev:setup": "pnpm dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "db:migrate": "pnpm --filter @medi/api db:migrate",
-    "db:seed": "pnpm --filter @medi/api db:seed"
+    "db:seed": "pnpm --filter @medi/api db:seed",
+    "scrape:goong": "node scripts/scrape-goong-help.mjs"
   },
   "packageManager": "pnpm@10.24.0",
   "devDependencies": {
-    "turbo": "^2.10.2"
+    "turbo": "^2.10.2",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "pnpm": {
     "overrides": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PlaceDto, TripAffiliateDto, TripDetailDto, TripRealtimeEvent } from "@medi/types";
@@ -37,6 +37,8 @@ const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m
 });
 
 function TripDetailContent({ tripId }: { tripId: string }) {
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const itineraryWidthRef = useRef(60);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isPro = user?.plan === "PRO";
@@ -48,6 +50,51 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   const [editingPlace, setEditingPlace] = useState<PlaceDto | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [itineraryWidth, setItineraryWidth] = useState(60);
+  const [isResizingMap, setIsResizingMap] = useState(false);
+
+  const setSplitWidth = useCallback((nextWidth: number) => {
+    const clampedWidth = Math.min(72, Math.max(35, nextWidth));
+    itineraryWidthRef.current = clampedWidth;
+    setItineraryWidth(clampedWidth);
+  }, []);
+
+  useEffect(() => {
+    const savedWidth = window.localStorage.getItem("medi:itinerary-map-split-width");
+    if (!savedWidth) return;
+
+    const parsedWidth = Number(savedWidth);
+    if (Number.isFinite(parsedWidth)) setSplitWidth(parsedWidth);
+  }, [setSplitWidth]);
+
+  const startMapResize = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (window.matchMedia("(min-width: 1024px)").matches === false) return;
+
+    const splitter = event.currentTarget;
+    splitter.setPointerCapture(event.pointerId);
+    setIsResizingMap(true);
+
+    const updateWidth = (clientX: number) => {
+      const bounds = splitContainerRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+      setSplitWidth(((clientX - bounds.left) / bounds.width) * 100);
+    };
+
+    const stopResize = () => {
+      setIsResizingMap(false);
+      window.localStorage.setItem("medi:itinerary-map-split-width", String(itineraryWidthRef.current));
+      splitter.removeEventListener("pointermove", onPointerMove);
+      splitter.removeEventListener("pointerup", stopResize);
+      splitter.removeEventListener("pointercancel", stopResize);
+    };
+
+    const onPointerMove = (moveEvent: PointerEvent) => updateWidth(moveEvent.clientX);
+
+    updateWidth(event.clientX);
+    splitter.addEventListener("pointermove", onPointerMove);
+    splitter.addEventListener("pointerup", stopResize);
+    splitter.addEventListener("pointercancel", stopResize);
+  }, [setSplitWidth]);
 
   const { data: fetchedTrip, isLoading, isError } = useQuery({
     queryKey: ["trip", tripId],
@@ -195,8 +242,14 @@ function TripDetailContent({ tripId }: { tripId: string }) {
 
           {/* Body: itinerary = scrollable content + fixed map; other tabs = full scroll */}
           {tab === "itinerary" ? (
-            <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-              <div className="order-2 min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-6 lg:order-1 lg:flex-[6]">
+            <div
+              ref={splitContainerRef}
+              className="flex min-h-0 flex-1 flex-col lg:flex-row"
+              style={{ "--itinerary-width": `${itineraryWidth}%` } as CSSProperties}
+            >
+              <div
+                className="order-2 min-h-0 min-w-0 w-full flex-1 overflow-y-auto px-4 py-4 space-y-6 sm:px-6 sm:py-5 lg:order-1 lg:w-[calc(var(--itinerary-width)-6px)] lg:flex-none"
+              >
                 <TripSetupPanel
                   trip={trip}
                   canEdit={trip.myRole !== "VIEWER"}
@@ -226,7 +279,30 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                 <AiSuggestPanel trip={trip} canEdit={trip.myRole !== "VIEWER"} />
                 <ImportBookingPanel trip={trip} canEdit={trip.myRole !== "VIEWER"} />
               </div>
-              <div className="order-1 h-52 shrink-0 border-b border-[#F3E3D3] bg-white sm:h-64 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-[4] lg:border-b-0 lg:border-l">
+              <div
+                role="separator"
+                aria-label="Điều chỉnh độ rộng nội dung và bản đồ"
+                aria-orientation="vertical"
+                aria-valuemin={35}
+                aria-valuemax={72}
+                aria-valuenow={Math.round(itineraryWidth)}
+                tabIndex={0}
+                onPointerDown={startMapResize}
+                onKeyDown={(event) => {
+                  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+                  event.preventDefault();
+                  const direction = event.key === "ArrowLeft" ? -1 : 1;
+                  const nextWidth = itineraryWidthRef.current + direction * (event.shiftKey ? 5 : 1);
+                  setSplitWidth(nextWidth);
+                  window.localStorage.setItem("medi:itinerary-map-split-width", String(itineraryWidthRef.current));
+                }}
+                className={`relative z-10 order-2 hidden w-3 shrink-0 cursor-col-resize touch-none items-center justify-center border-x border-[#F3E3D3] bg-white outline-none transition-colors hover:bg-[#FFF3EB] focus-visible:bg-[#FFF3EB] lg:flex ${isResizingMap ? "bg-[#FFF3EB]" : ""}`}
+              >
+                <span className="h-10 w-1 rounded-full bg-[#D7BFA9]" aria-hidden="true" />
+              </div>
+              <div
+                className="order-1 h-52 w-full shrink-0 border-b border-[#F3E3D3] bg-white sm:h-64 lg:order-3 lg:h-auto lg:min-h-0 lg:w-[calc(100%-var(--itinerary-width)-6px)] lg:flex-none lg:border-b-0"
+              >
                 <TripMap
                   itineraryItems={itineraryItems}
                   activeItemId={activeMapItemId}

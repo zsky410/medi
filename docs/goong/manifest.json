@@ -1,0 +1,384 @@
+{
+  "scrapedAt": "2026-07-14T09:37:13.212Z",
+  "source": "https://help.goong.io",
+  "articleCount": 42,
+  "categoryCount": 44,
+  "articles": [
+    {
+      "title": "TÍCH HỢP BẢN ĐỒ ĐỊA HÌNH (DEM) VỚI MAPLIBRE TRÊN GOONG MAP",
+      "url": "https://help.goong.io/kb/website-javascrip-api/dem/tich-hop-ban-do-dia-hinh-dem-voi-maplibre-tren-goong-map/",
+      "file": "website-javascrip-api/dem/tich-hop-ban-do-dia-hinh-dem-voi-maplibre-tren-goong-map.md",
+      "categories": [
+        "DEM"
+      ],
+      "updated": "2026-01-16T17:21:01"
+    },
+    {
+      "title": "LỊCH SỬ CẬP NHẬT GIỚI HẠN TỐC ĐỘ SPEEDLIMIT",
+      "url": "https://help.goong.io/kb/changelog/speed-limit-changelog/lich-su-cap-nhat-gioi-han-toc-do/",
+      "file": "changelog/speed-limit-changelog/lich-su-cap-nhat-gioi-han-toc-do.md",
+      "categories": [
+        "SpeedLimit"
+      ],
+      "updated": "2025-12-29T14:15:16"
+    },
+    {
+      "title": "GEOCODE STREET (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/geocode-rest-api-v2/geocode-street/",
+      "file": "rest-api-v2/geocode-rest-api-v2/geocode-street.md",
+      "categories": [
+        "GEOCODE V2"
+      ],
+      "updated": "2025-07-18T16:20:06"
+    },
+    {
+      "title": "GEOCODE (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/geocode-rest-api-v2/geocode-v2/",
+      "file": "rest-api-v2/geocode-rest-api-v2/geocode-v2.md",
+      "categories": [
+        "GEOCODE V2"
+      ],
+      "updated": "2026-03-16T15:17:01"
+    },
+    {
+      "title": "AUTOCOMPLETE V2",
+      "url": "https://help.goong.io/kb/rest-api-v2/autocomplete-rest-api-v2/autocomplete-v2/",
+      "file": "rest-api-v2/autocomplete-rest-api-v2/autocomplete-v2.md",
+      "categories": [
+        "AUTOCOMPLETE V2"
+      ],
+      "updated": "2026-02-24T16:11:21"
+    },
+    {
+      "title": "CHILDREN  ID (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/autocomplete-rest-api-v2/child-id-v2/",
+      "file": "rest-api-v2/autocomplete-rest-api-v2/child-id-v2.md",
+      "categories": [
+        "AUTOCOMPLETE V2"
+      ],
+      "updated": "2025-06-26T16:49:20"
+    },
+    {
+      "title": "PLACE DETAIL (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/place-detail-rest-api-v2/place-detail-place-detail-v2/",
+      "file": "rest-api-v2/place-detail-rest-api-v2/place-detail-place-detail-v2.md",
+      "categories": [
+        "PLACE DETAIL V2"
+      ],
+      "updated": "2025-07-09T15:40:50"
+    },
+    {
+      "title": "DIRECTIONS (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/directions-rest-api-v2/directions-v2/",
+      "file": "rest-api-v2/directions-rest-api-v2/directions-v2.md",
+      "categories": [
+        "DIRECTIONS V2"
+      ],
+      "updated": "2025-10-06T10:49:18"
+    },
+    {
+      "title": "DISTANCE MATRIX (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/distance-matrix-rest-api-v2/distance-matrix-v2/",
+      "file": "rest-api-v2/distance-matrix-rest-api-v2/distance-matrix-v2.md",
+      "categories": [
+        "DISTANCE MATRIX V2"
+      ],
+      "updated": "2025-07-10T15:35:47"
+    },
+    {
+      "title": "TRIP (V2)",
+      "url": "https://help.goong.io/kb/rest-api-v2/trip-rest-api-v2/trip-v2/",
+      "file": "rest-api-v2/trip-rest-api-v2/trip-v2.md",
+      "categories": [
+        "TRIP V2"
+      ],
+      "updated": "2025-10-06T10:31:42"
+    },
+    {
+      "title": "HƯỚNG DẪN SỬ DỤNG GOONG MAP LITE",
+      "url": "https://help.goong.io/kb/mobile-app/mobile-app-mobile-app/huong-dan-su-dung-goong-map-lite/",
+      "file": "mobile-app/mobile-app-mobile-app/huong-dan-su-dung-goong-map-lite.md",
+      "categories": [
+        "Mobile App"
+      ],
+      "updated": "2025-01-22T15:47:51"
+    },
+    {
+      "title": "HƯỚNG DẪN CÀI ĐẶT PLUGIN BẢN ĐỒ  GOONG MAP TRÊN WORDPRESS",
+      "url": "https://help.goong.io/kb/website-javascrip-api/plugin-map-plugin-map/huong-dan-cai-dat-plugin-ban-do-tren-wordpress/",
+      "file": "website-javascrip-api/plugin-map-plugin-map/huong-dan-cai-dat-plugin-ban-do-tren-wordpress.md",
+      "categories": [
+        "PLUGIN MAP"
+      ],
+      "updated": "2025-01-23T15:49:02"
+    },
+    {
+      "title": "SPEED LIMIT – CẢNH BÁO GIỚI HẠN TỐC ĐỘ",
+      "url": "https://help.goong.io/kb/rest-api/speed-limit/speed-limit-canh-bao-gioi-han-toc-do/",
+      "file": "rest-api/speed-limit/speed-limit-canh-bao-gioi-han-toc-do.md",
+      "categories": [
+        "SPEED LIMIT"
+      ],
+      "updated": "2025-01-20T17:26:21"
+    },
+    {
+      "title": "HƯỚNG DẪN CÁC BƯỚC THANH TOÁN TRÊN GOONG MAP",
+      "url": "https://help.goong.io/kb/gioi-thieu-tong-quan/tong-quan/huong-dan-cac-buoc-thanh-toan-tren-goong-map/",
+      "file": "gioi-thieu-tong-quan/tong-quan/huong-dan-cac-buoc-thanh-toan-tren-goong-map.md",
+      "categories": [
+        "Tổng quan"
+      ],
+      "updated": "2024-10-17T17:04:09"
+    },
+    {
+      "title": "NHỮNG CÂU HỎI THƯỜNG GẶP TRONG QUÁ TRÌNH TÍCH HỢP GOONG MAPs API",
+      "url": "https://help.goong.io/kb/qa/question/nhung-cau-hoi-thuong-gap-trong-qua-trinh-tich-hop-goong-map-api/",
+      "file": "qa/question/nhung-cau-hoi-thuong-gap-trong-qua-trinh-tich-hop-goong-map-api.md",
+      "categories": [
+        "Hỏi đáp"
+      ],
+      "updated": "2024-10-21T11:10:30"
+    },
+    {
+      "title": "HƯỚNG DẪN CÁCH THIẾT LẬP GIỚI HẠN ULR/IP CHO API KEY",
+      "url": "https://help.goong.io/kb/gioi-thieu-tong-quan/dang-ky-va-tao-key/tao-gioi-han-ulr-ip-cho-api-key-yeu-to-quan-trong-bao-mat-he-thong/",
+      "file": "gioi-thieu-tong-quan/dang-ky-va-tao-key/tao-gioi-han-ulr-ip-cho-api-key-yeu-to-quan-trong-bao-mat-he-thong.md",
+      "categories": [
+        "Đăng ký và tạo key"
+      ],
+      "updated": "2024-10-21T23:28:44"
+    },
+    {
+      "title": "TÍCH HỢP MAPBOX TRÊN NỀN BẢN ĐỒ GOONG TRONG FLUTTER",
+      "url": "https://help.goong.io/kb/app/flutter/tich-hop-mapbox-tren-nen-ban-do-goong-trong-flutter/",
+      "file": "app/flutter/tich-hop-mapbox-tren-nen-ban-do-goong-trong-flutter.md",
+      "categories": [
+        "Flutter"
+      ],
+      "updated": "2025-02-07T11:29:22"
+    },
+    {
+      "title": "BẢNG GIÁ DỊCH VỤ APIs BẢN ĐỒ",
+      "url": "https://help.goong.io/kb/tai-lieu-bo-sung/bang-gia/bang-gia-dich-vu-apis-ban-do/",
+      "file": "tai-lieu-bo-sung/bang-gia/bang-gia-dich-vu-apis-ban-do.md",
+      "categories": [
+        "Bảng giá"
+      ],
+      "updated": "2024-10-22T16:11:08"
+    },
+    {
+      "title": "TÍCH HỢP MAPBOX TRÊN NỀN BẢN ĐỒ GOONG  TRONG REACT NATIVE",
+      "url": "https://help.goong.io/kb/app/react-native/tich-hop-mapbox-tren-nen-ban-do-goong-trong-react-native/",
+      "file": "app/react-native/tich-hop-mapbox-tren-nen-ban-do-goong-trong-react-native.md",
+      "categories": [
+        "React Native"
+      ],
+      "updated": "2025-02-07T11:18:43"
+    },
+    {
+      "title": "TÍCH HỢP GOONG MAP SDK VÀO TRANG WEB VỚI MAPBOX",
+      "url": "https://help.goong.io/kb/website-javascrip-api/mapbox/tich-hop-mapbox-tren-nen-ban-do-goong-trong-web-site/",
+      "file": "website-javascrip-api/mapbox/tich-hop-mapbox-tren-nen-ban-do-goong-trong-web-site.md",
+      "categories": [
+        "Mapbox"
+      ],
+      "updated": "2025-02-07T14:04:46"
+    },
+    {
+      "title": "100$ MIỄN PHÍ DÙNG ĐẾN KHI NÀO?",
+      "url": "https://help.goong.io/kb/uncategorized/100-mien-phi-dung-den-khi-nao/",
+      "file": "uncategorized/100-mien-phi-dung-den-khi-nao.md",
+      "categories": [],
+      "updated": "2024-09-19T08:02:12"
+    },
+    {
+      "title": "GOONG BAO GỒM NHỮNG GÓI DỊCH VỤ NHƯ THẾ NÀO?",
+      "url": "https://help.goong.io/kb/tai-lieu-bo-sung/luu-y/goong-bao-gom-nhung-goi-dich-vu-nhu-the-nao/",
+      "file": "tai-lieu-bo-sung/luu-y/goong-bao-gom-nhung-goi-dich-vu-nhu-the-nao.md",
+      "categories": [
+        "Lưu ý"
+      ],
+      "updated": "2024-10-22T16:09:04"
+    },
+    {
+      "title": "GOONG MAP CÓ CÁC HÌNH THỨC THANH TOÁN NHƯ THẾ NÀO?",
+      "url": "https://help.goong.io/kb/tai-lieu-bo-sung/luu-y/goong-map-co-cac-hinh-thuc-thanh-toan-nhu-the-nao/",
+      "file": "tai-lieu-bo-sung/luu-y/goong-map-co-cac-hinh-thuc-thanh-toan-nhu-the-nao.md",
+      "categories": [
+        "Lưu ý"
+      ],
+      "updated": "2024-10-22T16:07:00"
+    },
+    {
+      "title": "TÔI CẦN LÀM GÌ ĐỂ BẮT ĐẦU SỬ DỤNG ĐƯỢC APIs CỦA GOONG MAPs",
+      "url": "https://help.goong.io/kb/tai-lieu-bo-sung/luu-y/toi-can-lam-gi-de-bat-dau-su-dung-duoc-apis-cua-goong-maps/",
+      "file": "tai-lieu-bo-sung/luu-y/toi-can-lam-gi-de-bat-dau-su-dung-duoc-apis-cua-goong-maps.md",
+      "categories": [
+        "Lưu ý"
+      ],
+      "updated": "2024-10-22T16:02:01"
+    },
+    {
+      "title": "TÍCH HỢP MAPBOX TRÊN NỀN BẢN ĐỒ GOONG TRONG ANDROID",
+      "url": "https://help.goong.io/kb/app/android/tich-hop-mapbox-tren-nen-ban-do-goong-trong-adndroid/",
+      "file": "app/android/tich-hop-mapbox-tren-nen-ban-do-goong-trong-adndroid.md",
+      "categories": [
+        "Android"
+      ],
+      "updated": "2025-02-07T14:09:54"
+    },
+    {
+      "title": "TÍCH HỢP MAPBOX TRÊN NỀN BẢN ĐỒ GOONG TRONG IOS",
+      "url": "https://help.goong.io/kb/app/ios/huong-dan-tich-hop-mapbox-tren-nen-ban-do-goong-trong-ios/",
+      "file": "app/ios/huong-dan-tich-hop-mapbox-tren-nen-ban-do-goong-trong-ios.md",
+      "categories": [
+        "Ios"
+      ],
+      "updated": "2025-02-07T11:34:04"
+    },
+    {
+      "title": "TÍCH HỢP MAPLIBRE TRÊN NỀN BẢN ĐỒ GOONG TRONG FLUTTER",
+      "url": "https://help.goong.io/kb/app/flutter/tich-hop-maplibre-treemn-nen-ban-do-goong-trong-flutter/",
+      "file": "app/flutter/tich-hop-maplibre-treemn-nen-ban-do-goong-trong-flutter.md",
+      "categories": [
+        "Flutter"
+      ],
+      "updated": "2025-05-07T18:12:06"
+    },
+    {
+      "title": "TÍCH HỢP MAPLIBRE TRÊN NỀN BẢN ĐỒ GOONG TRONG REACT NATIVE",
+      "url": "https://help.goong.io/kb/app/react-native/tich-hop-maplibre-tren-nen-ban-do-goong-trong-react-native/",
+      "file": "app/react-native/tich-hop-maplibre-tren-nen-ban-do-goong-trong-react-native.md",
+      "categories": [
+        "React Native"
+      ],
+      "updated": "2025-02-19T11:42:00"
+    },
+    {
+      "title": "TÍCH HỢP GOONG MAP SDK VÀO TRANG WEB VỚI MAPLIBRE",
+      "url": "https://help.goong.io/kb/website-javascrip-api/maplibre/tich-hop-goong-map-sdk-vao-trang-web/",
+      "file": "website-javascrip-api/maplibre/tich-hop-goong-map-sdk-vao-trang-web.md",
+      "categories": [
+        "MapLibre"
+      ],
+      "updated": "2026-02-02T17:27:25"
+    },
+    {
+      "title": "TÍCH HỢP MAPLIBRE TRÊN NỀN BẢN ĐỒ GOONG TRONG IOS",
+      "url": "https://help.goong.io/kb/app/ios/tich-hop-maplibre-tren-nen-ban-do-goong-trong-ios/",
+      "file": "app/ios/tich-hop-maplibre-tren-nen-ban-do-goong-trong-ios.md",
+      "categories": [
+        "Ios"
+      ],
+      "updated": "2025-02-07T13:54:40"
+    },
+    {
+      "title": "GEOCODE – LẤY THÔNG TIN ĐỊA CHỈ",
+      "url": "https://help.goong.io/kb/rest-api/geocode/geocodeding-ma-hoa-dia-ly/",
+      "file": "rest-api/geocode/geocodeding-ma-hoa-dia-ly.md",
+      "categories": [
+        "GEOCODE"
+      ],
+      "updated": "2026-03-16T16:13:46"
+    },
+    {
+      "title": "TÍCH HỢP MAPLIBRE TRÊN NỀN BẢN ĐỒ GOONG VÀO ANDROID",
+      "url": "https://help.goong.io/kb/app/android/tich-hop-goong-map-sdk-vao-android/",
+      "file": "app/android/tich-hop-goong-map-sdk-vao-android.md",
+      "categories": [
+        "Android"
+      ],
+      "updated": "2025-05-19T18:05:55"
+    },
+    {
+      "title": "STATIC MAPS – BẢN ĐỒ TĨNH",
+      "url": "https://help.goong.io/kb/rest-api/static-map-static-map/staticmap-ban-do-tinh/",
+      "file": "rest-api/static-map-static-map/staticmap-ban-do-tinh.md",
+      "categories": [
+        "Static Maps"
+      ],
+      "updated": "2024-10-21T10:33:45"
+    },
+    {
+      "title": "TRIP – TỐI ƯU TUYẾN ĐƯỜNG",
+      "url": "https://help.goong.io/kb/rest-api/trip/trip-toi-uu-tuyen-duong/",
+      "file": "rest-api/trip/trip-toi-uu-tuyen-duong.md",
+      "categories": [
+        "TRIP"
+      ],
+      "updated": "2024-10-21T21:50:54"
+    },
+    {
+      "title": "DISTANCE MATRIX – MA TRẬN KHOẢNG CÁCH",
+      "url": "https://help.goong.io/kb/rest-api/distance-matrix/distace-matrix-ma-tran-khoang-cach/",
+      "file": "rest-api/distance-matrix/distace-matrix-ma-tran-khoang-cach.md",
+      "categories": [
+        "DISTANCE MATRIX"
+      ],
+      "updated": "2024-10-20T21:36:36"
+    },
+    {
+      "title": "CHILD ID – NHẬN CHI TIẾT ĐỊA ĐIỂM THEO ID",
+      "url": "https://help.goong.io/kb/rest-api/autocomplete/child-id-nhan-chi-tiet-dia-diem-theo-id/",
+      "file": "rest-api/autocomplete/child-id-nhan-chi-tiet-dia-diem-theo-id.md",
+      "categories": [
+        "AUTOCOMPLETE"
+      ],
+      "updated": "2024-10-21T21:34:32"
+    },
+    {
+      "title": "DIRECTIONS – TÍNH TOÁN KHOẢNG CÁCH VÀ CHỈ ĐƯỜNG",
+      "url": "https://help.goong.io/kb/rest-api/directions/direction-tinh-toan-khoang-cach-va-chi-duong/",
+      "file": "rest-api/directions/direction-tinh-toan-khoang-cach-va-chi-duong.md",
+      "categories": [
+        "DIRECTIONS"
+      ],
+      "updated": "2024-10-18T12:00:37"
+    },
+    {
+      "title": "PLACE DETAIL – THÔNG TIN CHI TIẾT ĐỊA ĐIỂM",
+      "url": "https://help.goong.io/kb/rest-api/place-detail/place-detail-thong-tin-chi-tiet-dia-diem/",
+      "file": "rest-api/place-detail/place-detail-thong-tin-chi-tiet-dia-diem.md",
+      "categories": [
+        "PLACE DETAIL"
+      ],
+      "updated": "2024-10-21T10:34:50"
+    },
+    {
+      "title": "AUTOCOMPLETE (GỢI Ý ĐỊA ĐIỂM)",
+      "url": "https://help.goong.io/kb/rest-api/autocomplete/autocomplete-tu-dong-hoan-thanh-dia-diem/",
+      "file": "rest-api/autocomplete/autocomplete-tu-dong-hoan-thanh-dia-diem.md",
+      "categories": [
+        "AUTOCOMPLETE"
+      ],
+      "updated": "2024-10-21T21:31:47"
+    },
+    {
+      "title": "MỘT SỐ LƯU Ý KHI SỬ DỤNG GOONG",
+      "url": "https://help.goong.io/kb/tai-lieu-bo-sung/luu-y/mot-so-luu-y-khi-su-dung-goong/",
+      "file": "tai-lieu-bo-sung/luu-y/mot-so-luu-y-khi-su-dung-goong.md",
+      "categories": [
+        "Lưu ý"
+      ],
+      "updated": "2024-10-22T15:58:13"
+    },
+    {
+      "title": "ĐĂNG KÝ TÀI KHOẢN VÀ TẠO KEY",
+      "url": "https://help.goong.io/kb/gioi-thieu-tong-quan/dang-ky-va-tao-key/dang-ky-tai-khoan-va-tao-key/",
+      "file": "gioi-thieu-tong-quan/dang-ky-va-tao-key/dang-ky-tai-khoan-va-tao-key.md",
+      "categories": [
+        "Đăng ký và tạo key"
+      ],
+      "updated": "2024-10-21T23:23:44"
+    },
+    {
+      "title": "TỔNG QUAN VỀ GOONG VÀ CÁC DỊCH VỤ CUNG CẤP",
+      "url": "https://help.goong.io/kb/gioi-thieu-tong-quan/tong-quan/tong-quan-ve-goong-va-cac-dich-vu-cung-cap/",
+      "file": "gioi-thieu-tong-quan/tong-quan/tong-quan-ve-goong-va-cac-dich-vu-cung-cap.md",
+      "categories": [
+        "Tổng quan"
+      ],
+      "updated": "2024-10-21T23:16:42"
+    }
+  ]
+}
