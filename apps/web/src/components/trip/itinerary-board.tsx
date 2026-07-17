@@ -11,17 +11,24 @@ import {
   type DragEndEvent,
   type DragOverEvent,
 } from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { PlaceDto, PlaceDealDto, ReorderPlacesInput, TripDetailDto } from "@medi/types";
+import { Copy, MapPinned, Trash2, X } from "lucide-react";
+import type { CreatePlaceInput, PlaceDto, ReorderPlacesInput, TripDetailDto } from "@medi/types";
 import { api } from "@/lib/api";
-import { CATEGORY_LABELS, CATEGORY_EMOJIS, dayColor, daysUntil, formatDayLabel, formatMoney } from "@/lib/format";
-import { PlaceDealBanner } from "@/components/trip/place-deal-banner";
+import { dayColor, formatDayLabel } from "@/lib/format";
+import { loadPlaceMeta, patchPlaceMeta, type PlaceMeta } from "@/lib/place-meta";
+import { DiscoverPlacesBar } from "@/components/trip/discover-places-bar";
+import { PlaceCostModal } from "@/components/trip/place-cost-modal";
+import { PlaceItemCard } from "@/components/trip/place-item-card";
+import type { MapPreviewPin } from "@/components/trip/trip-map";
 
 const UNASSIGNED = "unassigned";
+const EMPTY_PLACE_IDS: string[] = [];
+const DRAG_ACTIVATION = { distance: 5 } as const;
 
 type Containers = Record<string, string[]>;
+type DayTarget = { dayId: string | null; label: string; color: string };
 
 function buildContainers(trip: TripDetailDto): Containers {
   const containers: Containers = {
@@ -33,106 +40,160 @@ function buildContainers(trip: TripDetailDto): Containers {
   return containers;
 }
 
-// Category emojis — keys match PlaceCategory from API
-const PLACE_CATEGORY_EMOJIS = CATEGORY_EMOJIS;
+function containersSignature(trip: TripDetailDto): string {
+  const parts = [`${UNASSIGNED}:${trip.unassignedPlaces.map((p) => p.id).join(",")}`];
+  for (const day of trip.days) {
+    parts.push(`${day.id}:${day.places.map((p) => p.id).join(",")}`);
+  }
+  return parts.join("|");
+}
 
-function PlaceItem({
-  place,
-  color,
-  label,
-  selected,
-  canEdit,
-  deal,
-  onSelect,
-  onHoverPlace,
-  onEdit,
-  onDelete,
+function containersEqual(a: Containers, b: Containers): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of bKeys) {
+    const left = a[key];
+    const right = b[key];
+    if (!left || !right || left.length !== right.length) return false;
+    for (let i = 0; i < left.length; i++) {
+      if (left[i] !== right[i]) return false;
+    }
+  }
+  return true;
+}
+
+function placeIdsSignature(trip: TripDetailDto): string {
+  const ids = [
+    ...trip.unassignedPlaces.map((p) => p.id),
+    ...trip.days.flatMap((d) => d.places.map((p) => p.id)),
+  ];
+  return ids.sort().join(",");
+}
+
+function DestinationMenu({
+  targets,
+  onPick,
 }: {
-  place: PlaceDto;
-  color: string;
-  label: string;
-  selected: boolean;
-  canEdit: boolean;
-  deal?: PlaceDealDto;
-  onSelect: () => void;
-  onHoverPlace?: (id: string | null) => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  targets: DayTarget[];
+  onPick: (dayId: string | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: place.id,
-    disabled: !canEdit,
-  });
+  return (
+    <div className="absolute right-0 top-full z-30 mt-1 min-w-[240px] overflow-hidden rounded-xl border border-[#E5E7EB] bg-white py-1 shadow-xl">
+      {targets.map((target) => (
+        <button
+          key={target.dayId ?? UNASSIGNED}
+          type="button"
+          onClick={() => onPick(target.dayId)}
+          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm font-semibold text-[#374151] hover:bg-[#F3F4F6] transition-colors"
+        >
+          <span
+            className="size-3.5 shrink-0 rotate-[-45deg] rounded-[50%_50%_50%_0] shadow-sm"
+            style={{ background: target.color }}
+            aria-hidden
+          />
+          <span className="truncate">{target.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
-  const emoji = PLACE_CATEGORY_EMOJIS[place.category] || "📍";
+function SelectionToolbar({
+  count,
+  targets,
+  busy,
+  onCopyTo,
+  onMoveTo,
+  onDelete,
+  onClear,
+}: {
+  count: number;
+  targets: DayTarget[];
+  busy: boolean;
+  onCopyTo: (dayId: string | null) => void;
+  onMoveTo: (dayId: string | null) => void;
+  onDelete: () => void;
+  onClear: () => void;
+}) {
+  const [menu, setMenu] = useState<"copy" | "move" | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onPointerDown(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setMenu(null);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   return (
     <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group flex items-start gap-3 rounded-2xl border bg-white p-3.5 transition-all ${
-        isDragging ? "z-10 opacity-75 shadow-xl rotate-1 scale-[1.02]" : ""
-      } ${selected ? "border-brand-500 ring-4 ring-brand-100 shadow-md" : "border-[#F3E3D3] shadow-sm hover:shadow-md"}`}
+      ref={rootRef}
+      className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#3F3F46] px-3 py-2.5 text-white shadow-lg"
     >
-      {canEdit && (
-        <button
-          {...attributes}
-          {...listeners}
-          className="mt-1 cursor-grab touch-none text-[#8A7563]/40 hover:text-brand-500 active:cursor-grabbing transition-colors text-lg"
-          aria-label="Kéo để sắp xếp"
-        >
-          ⠿
-        </button>
-      )}
-      <button
-        onClick={onSelect}
-        onMouseEnter={() => onHoverPlace?.(place.id)}
-        onMouseLeave={() => onHoverPlace?.(null)}
-        className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left"
-      >
-        <span
-          className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-display font-extrabold text-white shadow-sm border border-white/20"
-          style={{ background: color }}
-        >
-          {label}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-bold text-[#2B2118] group-hover:text-brand-500 transition-colors">{place.name}</span>
-          
-          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-            {/* Category Emoji Chip */}
-            <span className="bg-[#FFF3EB] text-[#2B2118] px-2 py-0.5 rounded-full text-[10px] font-bold border border-[#FFE1CF] flex items-center gap-1">
-              <span>{emoji}</span>
-              <span>{CATEGORY_LABELS[place.category] ?? place.category}</span>
-            </span>
-
-            {/* Cost Sticker */}
-            {place.cost ? (
-              <span className="bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-brand-100">
-                💸 {formatMoney(place.cost)}
-              </span>
-            ) : null}
-          </div>
-
-          {/* Yellow sticky note style for notes */}
-          {place.note && (
-            <span className="mt-2 block bg-[#FFE07D]/30 border-l-4 border-[#FFC93C] px-2.5 py-1.5 rounded-r-xl text-xs font-semibold text-[#2B2118] leading-relaxed">
-              📝 {place.note}
-            </span>
+      <p className="text-sm font-bold">
+        {count} địa điểm đã chọn
+      </p>
+      <div className="flex flex-wrap items-center gap-1">
+        <div className="relative">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setMenu((m) => (m === "copy" ? null : "copy"))}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold hover:bg-white/10 disabled:opacity-50"
+          >
+            <Copy size={14} />
+            Sao chép đến
+          </button>
+          {menu === "copy" && (
+            <DestinationMenu
+              targets={targets}
+              onPick={(dayId) => {
+                setMenu(null);
+                onCopyTo(dayId);
+              }}
+            />
           )}
-          {deal && <PlaceDealBanner deal={deal} />}
-        </span>
-      </button>
-      {canEdit && (
-        <span className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <button onClick={onEdit} className="cursor-pointer rounded-full p-1.5 text-xs text-[#8A7563] hover:bg-[#FFF3EB] hover:text-[#2B2118] transition-colors" aria-label="Sửa">
-            ✎
+        </div>
+        <div className="relative">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setMenu((m) => (m === "move" ? null : "move"))}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold hover:bg-white/10 disabled:opacity-50"
+          >
+            <MapPinned size={14} />
+            Di chuyển đến
           </button>
-          <button onClick={onDelete} className="cursor-pointer rounded-full p-1.5 text-xs text-[#8A7563] hover:bg-red-50 hover:text-red-500 transition-colors" aria-label="Xoá">
-            ✕
-          </button>
-        </span>
-      )}
+          {menu === "move" && (
+            <DestinationMenu
+              targets={targets}
+              onPick={(dayId) => {
+                setMenu(null);
+                onMoveTo(dayId);
+              }}
+            />
+          )}
+        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onDelete}
+          className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold hover:bg-white/10 disabled:opacity-50"
+        >
+          <Trash2 size={14} />
+          Xóa
+        </button>
+        <button
+          type="button"
+          onClick={onClear}
+          className="rounded-lg p-1.5 hover:bg-white/10"
+          aria-label="Bỏ chọn"
+        >
+          <X size={16} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -144,6 +205,7 @@ function DayColumn({
   color,
   placeIds,
   children,
+  footer,
   canEdit,
   onAdd,
   onOptimize,
@@ -154,8 +216,9 @@ function DayColumn({
   color?: string;
   placeIds: string[];
   children: React.ReactNode;
+  footer?: React.ReactNode;
   canEdit: boolean;
-  onAdd: () => void;
+  onAdd?: () => void;
   onOptimize?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: containerId });
@@ -165,7 +228,6 @@ function DayColumn({
     <section className={`rounded-2xl border-2 p-4 shadow-sm relative overflow-hidden ${
       isUnassigned ? "border-dashed border-[#8A7563]/40 bg-[#FFF9F2]" : "border-[#F3E3D3] bg-white"
     }`}>
-      {/* Top decorative notebook spiral line for day columns */}
       {!isUnassigned && (
         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-brand-500 to-[#FF3D77]/40" />
       )}
@@ -176,7 +238,7 @@ function DayColumn({
           <h3 className="text-base font-display font-extrabold text-[#2B2118]">{title}</h3>
           {subtitle && <span className="text-xs font-bold text-[#8A7563] bg-[#FFF3EB] px-2 py-0.5 rounded-full">{subtitle}</span>}
         </div>
-        {canEdit && (
+        {canEdit && (onAdd || onOptimize) && (
           <div className="flex items-center gap-1.5">
             {onOptimize && placeIds.length >= 2 && (
               <button
@@ -187,12 +249,14 @@ function DayColumn({
                 ⚡ Tối ưu
               </button>
             )}
-            <button
-              onClick={onAdd}
-              className="rounded-full px-3 py-1 text-xs font-extrabold text-brand-500 bg-[#FFF3EB] hover:bg-[#FFE1CF] border border-[#FFE1CF] transition-colors"
-            >
-              + Thêm chỗ chơi
-            </button>
+            {onAdd && (
+              <button
+                onClick={onAdd}
+                className="rounded-full px-3 py-1 text-xs font-extrabold text-brand-500 bg-[#FFF3EB] hover:bg-[#FFE1CF] border border-[#FFE1CF] transition-colors"
+              >
+                + Thêm chỗ chơi
+              </button>
+            )}
           </div>
         )}
       </header>
@@ -204,12 +268,15 @@ function DayColumn({
           } ${placeIds.length === 0 ? "min-h-16 border-2 border-dashed border-[#F3E3D3] flex items-center justify-center text-xs font-bold text-[#8A7563]/50" : ""}`}
         >
           {placeIds.length === 0 ? (
-            <div className="py-4 text-center w-full">Chưa có địa điểm nào. Thêm ngay thôi! ✨</div>
+            <div className="py-4 text-center w-full">
+              {isUnassigned ? "Chưa có địa điểm nào. Tìm phía dưới để thêm ✨" : "Chưa có địa điểm nào. Thêm ngay thôi! ✨"}
+            </div>
           ) : (
             children
           )}
         </div>
       </SortableContext>
+      {footer && <div className="mt-3">{footer}</div>}
     </section>
   );
 }
@@ -217,30 +284,61 @@ function DayColumn({
 export function ItineraryBoard({
   trip,
   selectedPlaceId,
-  placeDeals,
   onSelectPlace,
   onHoverPlace,
   onAddPlace,
   onEditPlace,
+  onPreviewPlace,
+  onPlaceAdded,
   isPro = false,
 }: {
   trip: TripDetailDto;
   selectedPlaceId: string | null;
-  placeDeals?: Map<string, PlaceDealDto>;
-  onSelectPlace: (id: string) => void;
+  onSelectPlace: (id: string | null) => void;
   onHoverPlace?: (id: string | null) => void;
   onAddPlace: (dayId: string | null, dayLabel: string) => void;
   onEditPlace: (place: PlaceDto) => void;
+  onPreviewPlace?: (pin: MapPreviewPin | null) => void;
+  onPlaceAdded?: (placeId: string) => void;
   isPro?: boolean;
 }) {
   const queryClient = useQueryClient();
   const canEdit = trip.myRole !== "VIEWER";
   const [containers, setContainers] = useState<Containers>(() => buildContainers(trip));
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [placeMeta, setPlaceMeta] = useState<Record<string, PlaceMeta>>(() => loadPlaceMeta(trip.id));
+  const [costPlace, setCostPlace] = useState<PlaceDto | null>(null);
   const draggingRef = useRef(false);
+  const tripLayoutKey = useMemo(() => containersSignature(trip), [trip]);
+  const allPlaceIdsKey = useMemo(() => placeIdsSignature(trip), [trip]);
 
   useEffect(() => {
-    if (!draggingRef.current) setContainers(buildContainers(trip));
-  }, [trip]);
+    setPlaceMeta(loadPlaceMeta(trip.id));
+  }, [trip.id]);
+
+  useEffect(() => {
+    if (draggingRef.current) return;
+    const next = buildContainers(trip);
+    setContainers((prev) => (containersEqual(prev, next) ? prev : next));
+  }, [trip, tripLayoutKey]);
+
+  useEffect(() => {
+    const valid = new Set(allPlaceIdsKey ? allPlaceIdsKey.split(",") : []);
+    setCheckedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (valid.has(id)) next.add(id);
+      });
+      if (next.size === prev.size) {
+        for (const id of prev) {
+          if (!next.has(id)) return next;
+        }
+        return prev;
+      }
+      return next;
+    });
+  }, [allPlaceIdsKey]);
 
   const placesById = useMemo(() => {
     const map = new Map<string, PlaceDto>();
@@ -255,7 +353,34 @@ export function ItineraryBoard({
     return map;
   }, [trip]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const dayTargets = useMemo<DayTarget[]>(() => {
+    const targets: DayTarget[] = [
+      { dayId: null, label: "Địa điểm khám phá", color: "#8A7563" },
+    ];
+    trip.days.forEach((day, i) => {
+      targets.push({
+        dayId: day.id,
+        label: formatDayLabel(day.date),
+        color: dayColor(i),
+      });
+    });
+    return targets;
+  }, [trip.days]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: DRAG_ACTIVATION }));
+
+  const discoverFooter = useMemo(
+    () =>
+      canEdit && onPreviewPlace && onPlaceAdded ? (
+        <DiscoverPlacesBar
+          tripId={trip.id}
+          canEdit={canEdit}
+          onPreview={onPreviewPlace}
+          onPlaceAdded={onPlaceAdded}
+        />
+      ) : null,
+    [trip.id, canEdit, onPreviewPlace, onPlaceAdded],
+  );
 
   const reorderMutation = useMutation({
     mutationFn: (input: ReorderPlacesInput) =>
@@ -266,6 +391,66 @@ export function ItineraryBoard({
   const deleteMutation = useMutation({
     mutationFn: (placeId: string) => api(`/trips/${trip.id}/places/${placeId}`, { method: "DELETE" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trip", trip.id] }),
+  });
+
+  const bulkMutation = useMutation({
+    mutationFn: async (action: { type: "copy" | "move" | "delete"; dayId?: string | null }) => {
+      const ids = [...checkedIds];
+      if (ids.length === 0) return;
+
+      if (action.type === "delete") {
+        await Promise.all(
+          ids.map((placeId) => api(`/trips/${trip.id}/places/${placeId}`, { method: "DELETE" })),
+        );
+        return;
+      }
+
+      if (action.type === "copy") {
+        for (const placeId of ids) {
+          const place = placesById.get(placeId);
+          if (!place) continue;
+          await api(`/trips/${trip.id}/places`, {
+            method: "POST",
+            body: JSON.stringify({
+              dayId: action.dayId ?? null,
+              name: place.name,
+              lat: place.lat,
+              lng: place.lng,
+              category: place.category,
+              address: place.address,
+              note: place.note,
+              cost: place.cost,
+              providerId: place.providerId,
+            } satisfies CreatePlaceInput),
+          });
+        }
+        return;
+      }
+
+      // move
+      const targetKey = action.dayId ?? UNASSIGNED;
+      const next: Containers = {};
+      for (const [key, list] of Object.entries(containers)) {
+        next[key] = list.filter((id) => !checkedIds.has(id));
+      }
+      next[targetKey] = [...(next[targetKey] ?? []), ...ids];
+      setContainers(next);
+      const moves = Object.entries(next).flatMap(([containerId, placeIds]) =>
+        placeIds.map((placeId, index) => ({
+          placeId,
+          dayId: containerId === UNASSIGNED ? null : containerId,
+          order: index,
+        })),
+      );
+      await api(`/trips/${trip.id}/places/reorder`, {
+        method: "PATCH",
+        body: JSON.stringify({ moves } satisfies ReorderPlacesInput),
+      });
+    },
+    onSuccess: () => {
+      setCheckedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
+    },
   });
 
   const optimizeMutation = useMutation({
@@ -281,6 +466,24 @@ export function ItineraryBoard({
     },
     [containers],
   );
+
+  function toggleChecked(placeId: string, checked: boolean) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(placeId);
+      else next.delete(placeId);
+      return next;
+    });
+  }
+
+  function updatePlaceMeta(placeId: string, patch: Partial<PlaceMeta>) {
+    patchPlaceMeta(trip.id, placeId, patch);
+    setPlaceMeta((prev) => ({ ...prev, [placeId]: { ...prev[placeId], ...patch } }));
+  }
+
+  function handleSelectPlace(placeId: string) {
+    onSelectPlace(selectedPlaceId === placeId ? null : placeId);
+  }
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
@@ -334,24 +537,30 @@ export function ItineraryBoard({
       const place = placesById.get(placeId);
       if (!place) return null;
       return (
-        <PlaceItem
+        <PlaceItemCard
           key={placeId}
+          tripId={trip.id}
           place={place}
           color={color}
-          label={containerId === UNASSIGNED ? "★" : String(i + 1)}
-          selected={selectedPlaceId === placeId}
+          label={String(i + 1)}
+          expanded={selectedPlaceId === placeId}
+          checked={checkedIds.has(placeId)}
+          meta={placeMeta[placeId] ?? {}}
           canEdit={canEdit}
-          deal={placeDeals?.get(placeId)}
-          onSelect={() => onSelectPlace(placeId)}
+          isPro={isPro}
+          onToggleCheck={(checked) => toggleChecked(placeId, checked)}
+          onSelect={() => handleSelectPlace(placeId)}
           onHoverPlace={onHoverPlace}
-          onEdit={() => onEditPlace(place)}
           onDelete={() => deleteMutation.mutate(placeId)}
+          onMetaChange={(patch) => updatePlaceMeta(placeId, patch)}
+          onOpenCost={() => setCostPlace(place)}
         />
       );
     });
   }
 
   return (
+    <>
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
@@ -364,12 +573,27 @@ export function ItineraryBoard({
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-5 text-left">
+        {canEdit && checkedIds.size > 0 && (
+          <SelectionToolbar
+            count={checkedIds.size}
+            targets={dayTargets}
+            busy={bulkMutation.isPending}
+            onCopyTo={(dayId) => bulkMutation.mutate({ type: "copy", dayId })}
+            onMoveTo={(dayId) => bulkMutation.mutate({ type: "move", dayId })}
+            onDelete={() => {
+              if (window.confirm(`Xóa ${checkedIds.size} địa điểm đã chọn?`)) {
+                bulkMutation.mutate({ type: "delete" });
+              }
+            }}
+            onClear={() => setCheckedIds(new Set())}
+          />
+        )}
         <DayColumn
           containerId={UNASSIGNED}
           title="Địa điểm khám phá"
-          placeIds={containers[UNASSIGNED] ?? []}
+          placeIds={containers[UNASSIGNED] ?? EMPTY_PLACE_IDS}
           canEdit={canEdit}
-          onAdd={() => onAddPlace(null, "Địa điểm khám phá")}
+          footer={discoverFooter ?? undefined}
         >
           {renderPlaces(UNASSIGNED)}
         </DayColumn>
@@ -380,7 +604,7 @@ export function ItineraryBoard({
             title={`Ngày ${i + 1}`}
             subtitle={formatDayLabel(day.date)}
             color={dayColor(i)}
-            placeIds={containers[day.id] ?? []}
+            placeIds={containers[day.id] ?? EMPTY_PLACE_IDS}
             canEdit={canEdit}
             onAdd={() => onAddPlace(day.id, `Ngày ${i + 1} (${formatDayLabel(day.date)})`)}
             onOptimize={isPro && canEdit ? () => optimizeMutation.mutate(day.id) : undefined}
@@ -390,5 +614,16 @@ export function ItineraryBoard({
         ))}
       </div>
     </DndContext>
+    <PlaceCostModal
+      tripId={trip.id}
+      place={costPlace}
+      costDescription={costPlace ? placeMeta[costPlace.id]?.costDescription : undefined}
+      onSaveCostDescription={(description) => {
+        if (!costPlace) return;
+        updatePlaceMeta(costPlace.id, { costDescription: description });
+      }}
+      onClose={() => setCostPlace(null)}
+    />
+    </>
   );
 }

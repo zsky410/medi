@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ClipboardList, MapPin, StickyNote } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { CreatePlaceInput, GeoAutocompleteResult, GeoSearchResult, PlaceDto } from "@medi/types";
 import { api } from "@/lib/api";
 import { guessCategory } from "@/lib/place-category";
@@ -22,6 +22,8 @@ export function DiscoverPlacesBar({
 }) {
   const queryClient = useQueryClient();
   const rootRef = useRef<HTMLDivElement>(null);
+  const onPreviewRef = useRef(onPreview);
+  const onPlaceAddedRef = useRef(onPlaceAdded);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<GeoAutocompleteResult[]>([]);
@@ -30,36 +32,52 @@ export function DiscoverPlacesBar({
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const searchCacheRef = useRef(new Map<string, GeoAutocompleteResult[]>());
   const requestIdRef = useRef(0);
+  const wasSearchingRef = useRef(false);
+
+  onPreviewRef.current = onPreview;
+  onPlaceAddedRef.current = onPlaceAdded;
 
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
       if (!rootRef.current?.contains(e.target as Node)) {
         setOpen(false);
-        onPreview(null);
+        onPreviewRef.current(null);
       }
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [onPreview]);
+  }, []);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
     const requestId = ++requestIdRef.current;
-    if (query.trim().length < 2) {
-      setResults([]);
-      setMessage("");
+    const normalizedQuery = query.trim();
+
+    if (normalizedQuery.length < 2) {
+      setResults((prev) => (prev.length === 0 ? prev : []));
+      setMessage((prev) => (prev === "" ? prev : ""));
       setSearching(false);
-      onPreview(null);
+      // Only clear map preview when the user actually stops an active search —
+      // calling setState on the parent on every mount/render causes update loops.
+      if (wasSearchingRef.current) {
+        wasSearchingRef.current = false;
+        onPreviewRef.current(null);
+      }
       return;
     }
+
+    wasSearchingRef.current = true;
     debounceRef.current = setTimeout(async () => {
-      const normalizedQuery = query.trim();
       setSearching(true);
       setMessage("");
       try {
         const cacheKey = normalizedQuery.toLocaleLowerCase("vi-VN");
         const cached = searchCacheRef.current.get(cacheKey);
-        const data = cached ?? await api<GeoAutocompleteResult[]>(`/geo/autocomplete?q=${encodeURIComponent(normalizedQuery)}`);
+        const data =
+          cached ??
+          (await api<GeoAutocompleteResult[]>(
+            `/geo/autocomplete?q=${encodeURIComponent(normalizedQuery)}`,
+          ));
         if (!cached && data.length > 0) searchCacheRef.current.set(cacheKey, data);
         if (requestId !== requestIdRef.current) return;
         setResults(data);
@@ -73,14 +91,16 @@ export function DiscoverPlacesBar({
         if (requestId === requestIdRef.current) setSearching(false);
       }
     }, 450);
+
     return () => clearTimeout(debounceRef.current);
-  }, [query, onPreview]);
+  }, [query]);
 
   const addMutation = useMutation({
     mutationFn: async (result: GeoAutocompleteResult) => {
-      const place = result.lat != null && result.lng != null
-        ? result as GeoSearchResult
-        : await api<GeoSearchResult>(`/geo/place?providerId=${encodeURIComponent(result.providerId)}`);
+      const place =
+        result.lat != null && result.lng != null
+          ? (result as GeoSearchResult)
+          : await api<GeoSearchResult>(`/geo/place?providerId=${encodeURIComponent(result.providerId)}`);
       return api<PlaceDto>(`/trips/${tripId}/places`, {
         method: "POST",
         body: JSON.stringify({
@@ -99,100 +119,76 @@ export function DiscoverPlacesBar({
       setQuery("");
       setResults([]);
       setOpen(false);
-      onPlaceAdded(place.id);
+      onPlaceAddedRef.current(place.id);
     },
   });
 
   function previewResult(result: GeoAutocompleteResult) {
     if (result.lat == null || result.lng == null) return;
-    onPreview({ latitude: result.lat, longitude: result.lng, name: result.name });
+    onPreviewRef.current({ latitude: result.lat, longitude: result.lng, name: result.name });
   }
 
   if (!canEdit) return null;
 
   return (
-    <section className="rounded-2xl border-2 border-[#F3E3D3] bg-white p-4 shadow-sm">
-      <h3 className="mb-3 font-display text-sm font-extrabold text-[#2B2118]">Địa điểm khám phá</h3>
-
-      <div ref={rootRef} className="relative">
-        <div className="flex items-center gap-2">
-          <div className="relative min-w-0 flex-1">
-            <MapPin
-              size={18}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7563]"
-              aria-hidden
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => {
-                if (results.length > 0) setOpen(true);
-              }}
-              placeholder="Thêm địa điểm"
-              className="w-full rounded-full border border-[#E8DDD3] bg-[#F5F5F5] py-2.5 pl-10 pr-4 text-sm font-semibold text-[#2B2118] outline-none placeholder:text-[#8A7563] focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition-colors"
-            />
-          </div>
-          <button
-            type="button"
-            disabled
-            title="Sắp ra mắt"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F0F0F0] text-[#8A7563] opacity-60"
-            aria-label="Ghi chú"
-          >
-            <StickyNote size={18} />
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Sắp ra mắt"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#F0F0F0] text-[#8A7563] opacity-60"
-            aria-label="Checklist"
-          >
-            <ClipboardList size={18} />
-          </button>
-        </div>
-
-        {open && (searching || results.length > 0 || message) && (
-          <ul
-            role="listbox"
-            className="absolute z-50 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-[#F3E3D3] bg-white py-1 shadow-xl"
-          >
-            {searching && (
-              <li className="flex justify-center py-4">
-                <Spinner className="size-6" />
-              </li>
-            )}
-            {!searching && message && (
-              <li className="px-4 py-3 text-sm font-semibold text-[#8A7563]">{message}</li>
-            )}
-            {!searching &&
-              results.map((r) => (
-                <li key={r.providerId}>
-                  <button
-                    type="button"
-                    role="option"
-                    className="w-full px-4 py-3 text-left hover:bg-[#FFF4EA] transition-colors cursor-pointer"
-                    onMouseEnter={() => previewResult(r)}
-                    onMouseLeave={() => onPreview(null)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      previewResult(r);
-                      addMutation.mutate(r);
-                    }}
-                    disabled={addMutation.isPending}
-                  >
-                    <p className="text-sm font-bold text-[#2B2118]">{r.name}</p>
-                    <p className="truncate text-xs font-semibold text-[#8A7563]">{r.address}</p>
-                  </button>
-                </li>
-              ))}
-          </ul>
-        )}
+    <div ref={rootRef} className="relative">
+      <div className="relative">
+        <MapPin
+          size={18}
+          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7563]"
+          aria-hidden
+        />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            if (results.length > 0) setOpen(true);
+          }}
+          placeholder="Thêm địa điểm"
+          className="w-full rounded-full border border-[#E8DDD3] bg-[#F5F5F5] py-2.5 pl-10 pr-4 text-sm font-semibold text-[#2B2118] outline-none placeholder:text-[#8A7563] focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 transition-colors"
+        />
       </div>
-    </section>
+
+      {open && (searching || results.length > 0 || message) && (
+        <ul
+          role="listbox"
+          className="absolute z-50 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-[#F3E3D3] bg-white py-1 shadow-xl"
+        >
+          {searching && (
+            <li className="flex justify-center py-4">
+              <Spinner className="size-6" />
+            </li>
+          )}
+          {!searching && message && (
+            <li className="px-4 py-3 text-sm font-semibold text-[#8A7563]">{message}</li>
+          )}
+          {!searching &&
+            results.map((r) => (
+              <li key={r.providerId}>
+                <button
+                  type="button"
+                  role="option"
+                  className="w-full px-4 py-3 text-left hover:bg-[#FFF4EA] transition-colors cursor-pointer"
+                  onMouseEnter={() => previewResult(r)}
+                  onMouseLeave={() => onPreviewRef.current(null)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    previewResult(r);
+                    addMutation.mutate(r);
+                  }}
+                  disabled={addMutation.isPending}
+                >
+                  <p className="text-sm font-bold text-[#2B2118]">{r.name}</p>
+                  <p className="truncate text-xs font-semibold text-[#8A7563]">{r.address}</p>
+                </button>
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
   );
 }

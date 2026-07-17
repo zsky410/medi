@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { PlaceDto, TripAffiliateDto, TripDetailDto, TripRealtimeEvent } from "@medi/types";
+import type { PlaceDto, TripDetailDto, TripRealtimeEvent } from "@medi/types";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTripRealtime } from "@/lib/socket";
@@ -12,7 +12,6 @@ import { AppHeader } from "@/components/app-header";
 import { RequireAuth } from "@/components/require-auth";
 import { Avatar, Button, Spinner } from "@/components/ui";
 import { ItineraryBoard } from "@/components/trip/itinerary-board";
-import { DiscoverPlacesBar } from "@/components/trip/discover-places-bar";
 import { PlaceSearchModal } from "@/components/trip/place-search";
 import { PlaceEditModal } from "@/components/trip/place-edit-modal";
 import { ExpensesTab } from "@/components/trip/expenses-tab";
@@ -101,18 +100,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
     queryFn: () => api<TripDetailDto>(`/trips/${tripId}`),
   });
 
-  const { data: affiliate } = useQuery({
-    queryKey: ["affiliate", tripId],
-    queryFn: () => api<TripAffiliateDto>(`/trips/${tripId}/affiliate`),
-    enabled: !!fetchedTrip,
-  });
-
-  const placeDeals = useMemo(() => {
-    const map = new Map<string, TripAffiliateDto["placeDeals"][number]>();
-    affiliate?.placeDeals.forEach((d) => map.set(d.placeId, d));
-    return map;
-  }, [affiliate]);
-
   useEffect(() => {
     if (fetchedTrip && isPro) saveOfflineSnapshot(fetchedTrip);
   }, [fetchedTrip, isPro]);
@@ -172,6 +159,15 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   );
 
   const activeMapItemId = hoveredPlaceId ?? selectedPlaceId;
+
+  const handleAddPlace = useCallback((dayId: string | null, label: string) => {
+    setSearchTarget({ dayId, label });
+  }, []);
+
+  const handlePlaceAdded = useCallback((id: string) => {
+    setMapPreview(null);
+    setSelectedPlaceId(id);
+  }, []);
 
   if (!trip) {
     if (isLoading) {
@@ -252,23 +248,15 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   canEdit={trip.myRole !== "VIEWER"}
                   onViewExpenses={() => setTab("expenses")}
                 />
-                <DiscoverPlacesBar
-                  tripId={trip.id}
-                  canEdit={trip.myRole !== "VIEWER"}
-                  onPreview={setMapPreview}
-                  onPlaceAdded={(id) => {
-                    setMapPreview(null);
-                    setSelectedPlaceId(id);
-                  }}
-                />
                 <ItineraryBoard
                   trip={trip}
                   selectedPlaceId={selectedPlaceId}
-                  placeDeals={placeDeals}
                   onSelectPlace={setSelectedPlaceId}
                   onHoverPlace={setHoveredPlaceId}
-                  onAddPlace={(dayId, label) => setSearchTarget({ dayId, label })}
+                  onAddPlace={handleAddPlace}
                   onEditPlace={setEditingPlace}
+                  onPreviewPlace={setMapPreview}
+                  onPlaceAdded={handlePlaceAdded}
                   isPro={isPro}
                 />
                 <AiSuggestPanel trip={trip} canEdit={trip.myRole !== "VIEWER"} />
