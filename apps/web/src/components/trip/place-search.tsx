@@ -81,7 +81,7 @@ export function PlaceSearchModal({
           lat: place.lat,
           lng: place.lng,
           address: place.address,
-          category: guessCategory(place.category),
+          category: guessCategory([place.category, place.name].filter(Boolean).join(" ")),
           providerId: place.providerId,
         } satisfies CreatePlaceInput),
       });

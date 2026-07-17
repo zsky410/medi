@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -12,15 +12,25 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, MapPinned, Trash2, X } from "lucide-react";
-import type { CreatePlaceInput, PlaceDto, ReorderPlacesInput, TripDetailDto } from "@medi/types";
+import type {
+  AttachmentDto,
+  CreatePlaceInput,
+  PlaceDto,
+  ReorderPlacesInput,
+  TripDetailDto,
+} from "@medi/types";
 import { api } from "@/lib/api";
+import { getBookingMetadata, getBookingTitle } from "@/lib/booking-display";
 import { dayColor, formatDayLabel } from "@/lib/format";
 import { loadPlaceMeta, patchPlaceMeta, type PlaceMeta } from "@/lib/place-meta";
+import { directionsUrl, mockTravel } from "@/lib/travel";
 import { DiscoverPlacesBar } from "@/components/trip/discover-places-bar";
+import { LodgingPinCard } from "@/components/trip/lodging-pin-card";
 import { PlaceCostModal } from "@/components/trip/place-cost-modal";
 import { PlaceItemCard } from "@/components/trip/place-item-card";
+import { TravelSegment } from "@/components/trip/travel-segment";
 import type { MapPreviewPin } from "@/components/trip/trip-map";
 
 const UNASSIGNED = "unassigned";
@@ -204,6 +214,7 @@ function DayColumn({
   subtitle,
   color,
   placeIds,
+  pinned,
   children,
   footer,
   canEdit,
@@ -215,6 +226,7 @@ function DayColumn({
   subtitle?: string;
   color?: string;
   placeIds: string[];
+  pinned?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   canEdit: boolean;
@@ -223,6 +235,9 @@ function DayColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: containerId });
   const isUnassigned = containerId === UNASSIGNED;
+  const hasPinned = Array.isArray(pinned) ? pinned.length > 0 : pinned != null;
+  const hasActivities = placeIds.length > 0;
+  const hasPlaces = hasActivities || hasPinned;
 
   return (
     <section className={`rounded-2xl border-2 p-4 shadow-sm relative overflow-hidden ${
@@ -260,14 +275,19 @@ function DayColumn({
           </div>
         )}
       </header>
+      {pinned != null && (
+        <div className={`mb-2.5 space-y-2.5 ${canEdit ? "pl-6 pr-9" : ""}`}>{pinned}</div>
+      )}
       <SortableContext items={placeIds} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
           className={`space-y-2.5 rounded-xl transition-colors ${
             isOver ? "bg-brand-50/50 p-1" : ""
-          } ${placeIds.length === 0 ? "min-h-16 border-2 border-dashed border-[#F3E3D3] flex items-center justify-center text-xs font-bold text-[#8A7563]/50" : ""}`}
+          } ${!hasPlaces ? "min-h-16 border-2 border-dashed border-[#F3E3D3] flex items-center justify-center text-xs font-bold text-[#8A7563]/50" : ""} ${
+            hasPinned && !hasActivities ? "min-h-10" : ""
+          }`}
         >
-          {placeIds.length === 0 ? (
+          {!hasPlaces ? (
             <div className="py-4 text-center w-full">
               {isUnassigned ? "Chưa có địa điểm nào. Tìm phía dưới để thêm ✨" : "Chưa có địa điểm nào. Thêm ngay thôi! ✨"}
             </div>
@@ -276,7 +296,7 @@ function DayColumn({
           )}
         </div>
       </SortableContext>
-      {footer && <div className="mt-3">{footer}</div>}
+      {footer && <div className={`mt-3 ${canEdit ? "pl-6 pr-9" : ""}`}>{footer}</div>}
     </section>
   );
 }
@@ -346,6 +366,16 @@ export function ItineraryBoard({
     trip.days.forEach((d) => d.places.forEach((p) => map.set(p.id, p)));
     return map;
   }, [trip]);
+
+  const { data: attachments } = useQuery({
+    queryKey: ["attachments", trip.id],
+    queryFn: () => api<AttachmentDto[]>(`/trips/${trip.id}/attachments`),
+  });
+
+  const lodgings = useMemo(
+    () => (attachments ?? []).filter((a) => a.type === "lodging"),
+    [attachments],
+  );
 
   const dayIndexByContainer = useMemo(() => {
     const map = new Map<string, number>();
@@ -530,33 +560,99 @@ export function ItineraryBoard({
     reorderMutation.mutate({ moves });
   }
 
+  function renderPlaceCard(place: PlaceDto, color: string, label: string) {
+    return (
+      <PlaceItemCard
+        key={place.id}
+        tripId={trip.id}
+        place={place}
+        color={color}
+        label={label}
+        expanded={selectedPlaceId === place.id}
+        checked={checkedIds.has(place.id)}
+        meta={placeMeta[place.id] ?? {}}
+        canEdit={canEdit}
+        isPro={isPro}
+        onToggleCheck={(checked) => toggleChecked(place.id, checked)}
+        onSelect={() => handleSelectPlace(place.id)}
+        onHoverPlace={onHoverPlace}
+        onDelete={() => deleteMutation.mutate(place.id)}
+        onMetaChange={(patch) => updatePlaceMeta(place.id, patch)}
+        onOpenCost={() => setCostPlace(place)}
+      />
+    );
+  }
+
+  function renderLodgingPins() {
+    if (lodgings.length === 0) return null;
+    return lodgings.map((lodging) => <LodgingPinCard key={lodging.id} lodging={lodging} />);
+  }
+
   function renderPlaces(containerId: string) {
     const dayIdx = dayIndexByContainer.get(containerId);
     const color = containerId === UNASSIGNED ? "#8A7563" : dayColor(dayIdx ?? 0);
-    return containers[containerId]?.map((placeId, i) => {
+    const ids = containers[containerId] ?? [];
+    const isDay = containerId !== UNASSIGNED;
+    // Horizontal offset (px) of the place pin centre so the dashed connector
+    // lines up under the pins. Larger when the selection checkbox is shown.
+    // checkbox(16) + gap(8) + card border(1) + px-3(12) + pin half(8) = 45.
+    const connectorLeft = canEdit ? 45 : 21;
+    // Mock: treat the first lodging as the day's stay until real per-day
+    // lodging assignment lands.
+    const dayLodging = isDay ? lodgings[0] : undefined;
+    const lodgingLabel = dayLodging ? getBookingTitle(dayLodging) : undefined;
+    const lodgingPoint = dayLodging
+      ? { name: lodgingLabel ?? "", address: getBookingMetadata(dayLodging)?.address }
+      : undefined;
+
+    const nodes: ReactNode[] = [];
+
+    // Leg from the lodging to the first stop of the day.
+    if (isDay && dayLodging && lodgingPoint && lodgingLabel) {
+      const firstId = ids[0];
+      const first = firstId ? placesById.get(firstId) : undefined;
+      if (first) {
+        nodes.push(
+          <TravelSegment
+            key="seg-start"
+            estimate={mockTravel(dayLodging.id, first.id)}
+            connectorLeft={connectorLeft}
+            directionsHref={directionsUrl(lodgingPoint, first)}
+          />,
+        );
+      }
+    }
+
+    ids.forEach((placeId, index) => {
       const place = placesById.get(placeId);
-      if (!place) return null;
-      return (
-        <PlaceItemCard
-          key={placeId}
-          tripId={trip.id}
-          place={place}
-          color={color}
-          label={String(i + 1)}
-          expanded={selectedPlaceId === placeId}
-          checked={checkedIds.has(placeId)}
-          meta={placeMeta[placeId] ?? {}}
-          canEdit={canEdit}
-          isPro={isPro}
-          onToggleCheck={(checked) => toggleChecked(placeId, checked)}
-          onSelect={() => handleSelectPlace(placeId)}
-          onHoverPlace={onHoverPlace}
-          onDelete={() => deleteMutation.mutate(placeId)}
-          onMetaChange={(patch) => updatePlaceMeta(placeId, patch)}
-          onOpenCost={() => setCostPlace(place)}
-        />
-      );
+      if (!place) return;
+      nodes.push(renderPlaceCard(place, color, String(index + 1)));
+      if (!isDay) return;
+
+      const nextId = ids[index + 1];
+      const next = nextId ? placesById.get(nextId) : undefined;
+      if (next) {
+        nodes.push(
+          <TravelSegment
+            key={`seg-${place.id}`}
+            estimate={mockTravel(place.id, next.id)}
+            connectorLeft={connectorLeft}
+            directionsHref={directionsUrl(place, next)}
+          />,
+        );
+      } else if (dayLodging && lodgingPoint && lodgingLabel) {
+        nodes.push(
+          <TravelSegment
+            key={`seg-end-${place.id}`}
+            estimate={mockTravel(place.id, dayLodging.id)}
+            connectorLeft={connectorLeft}
+            directionsHref={directionsUrl(place, lodgingPoint)}
+            destinationLabel={lodgingLabel}
+          />,
+        );
+      }
     });
+    return nodes;
   }
 
   return (
@@ -597,21 +693,24 @@ export function ItineraryBoard({
         >
           {renderPlaces(UNASSIGNED)}
         </DayColumn>
-        {trip.days.map((day, i) => (
-          <DayColumn
-            key={day.id}
-            containerId={day.id}
-            title={`Ngày ${i + 1}`}
-            subtitle={formatDayLabel(day.date)}
-            color={dayColor(i)}
-            placeIds={containers[day.id] ?? EMPTY_PLACE_IDS}
-            canEdit={canEdit}
-            onAdd={() => onAddPlace(day.id, `Ngày ${i + 1} (${formatDayLabel(day.date)})`)}
-            onOptimize={isPro && canEdit ? () => optimizeMutation.mutate(day.id) : undefined}
-          >
-            {renderPlaces(day.id)}
-          </DayColumn>
-        ))}
+        {trip.days.map((day, i) => {
+          return (
+            <DayColumn
+              key={day.id}
+              containerId={day.id}
+              title={`Ngày ${i + 1}`}
+              subtitle={formatDayLabel(day.date)}
+              color={dayColor(i)}
+              placeIds={containers[day.id] ?? EMPTY_PLACE_IDS}
+              pinned={renderLodgingPins()}
+              canEdit={canEdit}
+              onAdd={() => onAddPlace(day.id, `Ngày ${i + 1} (${formatDayLabel(day.date)})`)}
+              onOptimize={isPro && canEdit ? () => optimizeMutation.mutate(day.id) : undefined}
+            >
+              {renderPlaces(day.id)}
+            </DayColumn>
+          );
+        })}
       </div>
     </DndContext>
     <PlaceCostModal

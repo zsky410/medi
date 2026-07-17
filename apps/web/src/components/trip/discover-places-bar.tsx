@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
 import type { CreatePlaceInput, GeoAutocompleteResult, GeoSearchResult, PlaceDto } from "@medi/types";
@@ -22,6 +23,9 @@ export function DiscoverPlacesBar({
 }) {
   const queryClient = useQueryClient();
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputWrapRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const onPreviewRef = useRef(onPreview);
   const onPlaceAddedRef = useRef(onPlaceAdded);
   const [query, setQuery] = useState("");
@@ -39,7 +43,8 @@ export function DiscoverPlacesBar({
 
   useEffect(() => {
     function onPointerDown(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) {
         setOpen(false);
         onPreviewRef.current(null);
       }
@@ -95,6 +100,24 @@ export function DiscoverPlacesBar({
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
+  const menuVisible = open && (searching || results.length > 0 || Boolean(message));
+
+  useLayoutEffect(() => {
+    if (!menuVisible) return;
+    function updatePosition() {
+      const rect = inputWrapRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuPos({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    }
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [menuVisible]);
+
   const addMutation = useMutation({
     mutationFn: async (result: GeoAutocompleteResult) => {
       const place =
@@ -109,7 +132,7 @@ export function DiscoverPlacesBar({
           lat: place.lat,
           lng: place.lng,
           address: place.address,
-          category: guessCategory(place.category),
+          category: guessCategory([place.category, place.name].filter(Boolean).join(" ")),
           providerId: place.providerId,
         } satisfies CreatePlaceInput),
       });
@@ -132,7 +155,7 @@ export function DiscoverPlacesBar({
 
   return (
     <div ref={rootRef} className="relative">
-      <div className="relative">
+      <div ref={inputWrapRef} className="relative">
         <MapPin
           size={18}
           className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A7563]"
@@ -153,11 +176,19 @@ export function DiscoverPlacesBar({
         />
       </div>
 
-      {open && (searching || results.length > 0 || message) && (
-        <ul
-          role="listbox"
-          className="absolute z-50 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-[#F3E3D3] bg-white py-1 shadow-xl"
-        >
+      {menuVisible && menuPos && typeof document !== "undefined" &&
+        createPortal(
+          <ul
+            ref={menuRef}
+            role="listbox"
+            style={{
+              position: "fixed",
+              top: menuPos.top,
+              left: menuPos.left,
+              width: menuPos.width,
+            }}
+            className="z-[1000] max-h-72 overflow-y-auto rounded-2xl border border-[#F3E3D3] bg-white py-1 shadow-xl"
+          >
           {searching && (
             <li className="flex justify-center py-4">
               <Spinner className="size-6" />
@@ -187,8 +218,9 @@ export function DiscoverPlacesBar({
                 </button>
               </li>
             ))}
-        </ul>
-      )}
+          </ul>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -58,7 +58,10 @@ export function LodgingBookingCard({
   const streetAddress = meta.address ?? "";
 
   return (
-    <div className="group relative rounded-2xl border border-[#E0E0E0] bg-[#F3F3F3] p-4 sm:p-5">
+    <div
+      id={`lodging-booking-${att.id}`}
+      className="group relative scroll-mt-4 rounded-2xl border border-[#E0E0E0] bg-[#F3F3F3] p-4 transition-shadow sm:p-5"
+    >
       {canEdit && (
         <button
           type="button"

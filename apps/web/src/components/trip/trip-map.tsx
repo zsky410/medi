@@ -3,19 +3,19 @@
 import { useEffect, useRef } from "react";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import type { PlaceDto } from "@medi/types";
+import { dayColor } from "@/lib/format";
 
 const GOONG_STYLE = (mapKey?: string) =>
   mapKey ? `https://tiles.goong.io/assets/goong_map_web.json?api_key=${encodeURIComponent(mapKey)}` : null;
 const FALLBACK_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const UNASSIGNED_COLOR = "#8A7563";
 
 // NOTE: MapLibre positions markers by writing `transform: translate(...)` onto
 // this element every frame. Transitioning `transform` (e.g. `transition-all`)
 // makes the marker lag/float behind the map instead of staying pinned, so we
 // only transition color/shadow and avoid transform-based scaling here.
 const MARKER_BASE =
-  "medi-itinerary-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-[background-color,box-shadow] duration-200 cursor-pointer";
-const MARKER_DEFAULT = `${MARKER_BASE} bg-blue-600 hover:bg-blue-700`;
-const MARKER_ACTIVE = `${MARKER_BASE} bg-[#FF6B2C] shadow-xl ring-4 ring-[#FF6B2C]/40 z-10`;
+  "medi-itinerary-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-sm font-bold text-white shadow-lg transition-[box-shadow] duration-200 cursor-pointer";
 
 export interface ItineraryMapItem {
   id: string;
@@ -23,6 +23,7 @@ export interface ItineraryMapItem {
   latitude: number;
   longitude: number;
   visit_order: number;
+  color: string;
 }
 
 export interface MapPreviewPin {
@@ -31,13 +32,27 @@ export interface MapPreviewPin {
   name?: string;
 }
 
+export interface LodgingMapPin {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+const BED_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>';
+
 interface MarkerEntry {
   marker: Marker;
   element: HTMLButtonElement;
   item: ItineraryMapItem;
 }
 
-export function placesToItineraryItems(places: PlaceDto[]): ItineraryMapItem[] {
+/** Flat list helper (keeps day-order STT when callers pass a single day). */
+export function placesToItineraryItems(
+  places: PlaceDto[],
+  color: string = "#2563eb",
+): ItineraryMapItem[] {
   return places
     .filter((p) => p.lat != null && p.lng != null)
     .map((p, index) => ({
@@ -46,20 +61,82 @@ export function placesToItineraryItems(places: PlaceDto[]): ItineraryMapItem[] {
       latitude: p.lat!,
       longitude: p.lng!,
       visit_order: index + 1,
+      color,
     }));
 }
 
-function applyMarkerStyle(element: HTMLButtonElement, isActive: boolean) {
-  element.className = isActive ? MARKER_ACTIVE : MARKER_DEFAULT;
+/** All trip places for the map — STT + colors match itinerary columns. */
+export function tripPlacesToMapItems(
+  days: { places: PlaceDto[] }[],
+  unassignedPlaces: PlaceDto[] = [],
+): ItineraryMapItem[] {
+  const items: ItineraryMapItem[] = [];
+
+  unassignedPlaces
+    .filter((p) => p.lat != null && p.lng != null)
+    .forEach((p, index) => {
+      items.push({
+        id: p.id,
+        name: p.name,
+        latitude: p.lat!,
+        longitude: p.lng!,
+        visit_order: index + 1,
+        color: UNASSIGNED_COLOR,
+      });
+    });
+
+  days.forEach((day, dayIdx) => {
+    const color = dayColor(dayIdx);
+    day.places
+      .filter((p) => p.lat != null && p.lng != null)
+      .forEach((p, index) => {
+        items.push({
+          id: p.id,
+          name: p.name,
+          latitude: p.lat!,
+          longitude: p.lng!,
+          visit_order: index + 1,
+          color,
+        });
+      });
+  });
+
+  return items;
+}
+
+// IMPORTANT: only toggle our own classes / inline styles here. Never reassign
+// `element.className`, because MapLibre adds its own `maplibregl-marker` class
+// (which provides `position:absolute; left:0; top:0; will-change:transform`).
+// Wiping it detaches the marker from absolute positioning and makes it drift on
+// zoom/pan.
+function applyMarkerStyle(element: HTMLButtonElement, color: string, isActive: boolean) {
+  element.classList.toggle("z-10", isActive);
+  element.style.backgroundColor = color;
+  element.style.boxShadow = isActive
+    ? `0 0 0 4px ${color}59, 0 10px 15px -3px rgb(0 0 0 / 0.2)`
+    : "";
 }
 
 function createMarkerElement(item: ItineraryMapItem, isActive: boolean): HTMLButtonElement {
   const el = document.createElement("button");
   el.type = "button";
-  el.className = isActive ? MARKER_ACTIVE : MARKER_DEFAULT;
+  el.className = MARKER_BASE;
   el.textContent = String(item.visit_order);
   el.setAttribute("aria-label", `${item.visit_order}. ${item.name}`);
   el.title = item.name;
+  applyMarkerStyle(el, item.color, isActive);
+  return el;
+}
+
+function createLodgingMarkerElement(pin: LodgingMapPin): HTMLButtonElement {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className =
+    "medi-lodging-marker flex h-8 w-8 items-center justify-center rounded-full border-2 border-white text-white shadow-lg cursor-pointer";
+  el.style.backgroundColor = "#7C3AED";
+  el.title = pin.name;
+  el.setAttribute("aria-label", `Chỗ ở: ${pin.name}`);
+  el.innerHTML = BED_ICON_SVG;
   return el;
 }
 
@@ -74,12 +151,15 @@ function getMapErrorText(event: unknown): string {
 
 export function TripMap({
   itineraryItems,
+  lodgingPins = [],
   activeItemId = null,
   focusItemId = null,
   previewPin = null,
   onMarkerClick,
 }: {
   itineraryItems: ItineraryMapItem[];
+  /** Lodging bookings shown with a bed icon (no number). */
+  lodgingPins?: LodgingMapPin[];
   /** Highlight marker (hover or selection). */
   activeItemId?: string | null;
   /** Pan/zoom map to this item (typically click selection only). */
@@ -91,6 +171,7 @@ export function TripMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
+  const lodgingMarkersRef = useRef<Map<string, Marker>>(new Map());
   const previewMarkerRef = useRef<Marker | null>(null);
   const fittedKeyRef = useRef("");
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -136,6 +217,8 @@ export function TripMap({
       resizeObserver.disconnect();
       markersRef.current.forEach(({ marker }) => marker.remove());
       markersRef.current.clear();
+      lodgingMarkersRef.current.forEach((marker) => marker.remove());
+      lodgingMarkersRef.current.clear();
       previewMarkerRef.current?.remove();
       previewMarkerRef.current = null;
       map.remove();
@@ -149,7 +232,9 @@ export function TripMap({
     const map = mapRef.current;
     if (!map) return;
 
-    const itemsKey = itineraryItems.map((i) => `${i.id}:${i.visit_order}`).join("|");
+    const itemsKey = itineraryItems
+      .map((i) => `${i.id}:${i.visit_order}:${i.color}`)
+      .join("|");
     const shouldRefit = itemsKey !== fittedKeyRef.current;
 
     markersRef.current.forEach(({ marker }) => marker.remove());
@@ -164,7 +249,13 @@ export function TripMap({
         onMarkerClickRef.current?.(item.id);
       });
 
-      const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+      const marker = new maplibregl.Marker({
+        element: el,
+        anchor: "center",
+        // Keep the marker glued to its coordinate during zoom/pan instead of
+        // snapping to whole pixels (which looks like the pin drifting).
+        subpixelPositioning: true,
+      })
         .setLngLat([item.longitude, item.latitude])
         .addTo(map);
 
@@ -176,16 +267,48 @@ export function TripMap({
       fittedKeyRef.current = itemsKey;
       const bounds = new maplibregl.LngLatBounds();
       itineraryItems.forEach((item) => bounds.extend([item.longitude, item.latitude]));
-      map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: shouldRefit ? 600 : 0 });
+      map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: 600 });
     } else if (!located) {
       fittedKeyRef.current = "";
     }
   }, [itineraryItems]);
 
+  // Lodging bookings (bed icon, no number). Rebuilt when the geocoded set changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    lodgingMarkersRef.current.forEach((marker) => marker.remove());
+    lodgingMarkersRef.current.clear();
+
+    for (const pin of lodgingPins) {
+      const el = createLodgingMarkerElement(pin);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 15) });
+      });
+      const marker = new maplibregl.Marker({
+        element: el,
+        anchor: "center",
+        subpixelPositioning: true,
+      })
+        .setLngLat([pin.longitude, pin.latitude])
+        .addTo(map);
+      lodgingMarkersRef.current.set(pin.id, marker);
+    }
+
+    // If the trip has no located places yet, still frame the lodging pins.
+    if (itineraryItems.length === 0 && lodgingPins.length > 0) {
+      const bounds = new maplibregl.LngLatBounds();
+      lodgingPins.forEach((pin) => bounds.extend([pin.longitude, pin.latitude]));
+      map.fitBounds(bounds, { padding: 72, maxZoom: 14, duration: 600 });
+    }
+  }, [lodgingPins, itineraryItems.length]);
+
   // Highlight active marker (hover or selection).
   useEffect(() => {
-    markersRef.current.forEach(({ element }, id) => {
-      applyMarkerStyle(element, id === activeItemId);
+    markersRef.current.forEach(({ element, item }, id) => {
+      applyMarkerStyle(element, item.color, id === activeItemId);
     });
   }, [activeItemId]);
 
@@ -216,11 +339,15 @@ export function TripMap({
 
     const el = document.createElement("div");
     el.className =
-      "flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-[#FF6B2C] shadow-lg ring-4 ring-[#FF6B2C]/25 animate-pulse";
+      "flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-[#FF6B2C] shadow-lg ring-4 ring-[#FF6B2C]/25";
     el.innerHTML = `<span class="text-lg" aria-hidden="true">📍</span>`;
     if (previewPin.name) el.title = previewPin.name;
 
-    const marker = new maplibregl.Marker({ element: el, anchor: "center" })
+    const marker = new maplibregl.Marker({
+      element: el,
+      anchor: "center",
+      subpixelPositioning: true,
+    })
       .setLngLat([previewPin.longitude, previewPin.latitude])
       .addTo(map);
     previewMarkerRef.current = marker;

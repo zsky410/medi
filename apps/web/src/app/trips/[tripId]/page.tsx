@@ -18,13 +18,12 @@ import { ExpensesTab } from "@/components/trip/expenses-tab";
 import { ChecklistTab } from "@/components/trip/checklist-tab";
 import { BookingsTab } from "@/components/trip/bookings-tab";
 import { TripSetupPanel } from "@/components/trip/trip-setup-panel";
-import { AiSuggestPanel } from "@/components/trip/ai-suggest-panel";
-import { ImportBookingPanel } from "@/components/trip/import-booking-panel";
 import { MembersModal } from "@/components/trip/members-modal";
 import { ShareModal } from "@/components/trip/share-modal";
 import { ExportMapsButton, loadOfflineSnapshot, saveOfflineSnapshot } from "@/components/trip/pro-tools";
 import { TripTabSidebar, type TripTab } from "@/components/trip/trip-tab-sidebar";
-import { placesToItineraryItems, type MapPreviewPin } from "@/components/trip/trip-map";
+import { tripPlacesToMapItems, type MapPreviewPin } from "@/components/trip/trip-map";
+import { useLodgingPins } from "@/lib/use-lodging-pins";
 
 const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m.TripMap), {
   ssr: false,
@@ -132,31 +131,12 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   );
   useTripRealtime(tripId, onRealtimeEvent);
 
-  const mapDayId = useMemo(() => {
-    if (!trip) return null;
-    if (selectedPlaceId) {
-      const day = trip.days.find((d) => d.places.some((p) => p.id === selectedPlaceId));
-      if (day) return day.id;
-    }
-    const firstWithPlaces = trip.days.find((d) => d.places.length > 0);
-    return firstWithPlaces?.id ?? trip.days[0]?.id ?? null;
-  }, [trip, selectedPlaceId]);
-
-  const mapDayPlaces = useMemo(() => {
+  const itineraryItems = useMemo(() => {
     if (!trip) return [];
-    if (selectedPlaceId && trip.unassignedPlaces.some((p) => p.id === selectedPlaceId)) {
-      return trip.unassignedPlaces;
-    }
-    if (mapDayId) {
-      return trip.days.find((d) => d.id === mapDayId)?.places ?? [];
-    }
-    return trip.days[0]?.places ?? [];
-  }, [trip, mapDayId, selectedPlaceId]);
+    return tripPlacesToMapItems(trip.days, trip.unassignedPlaces);
+  }, [trip]);
 
-  const itineraryItems = useMemo(
-    () => placesToItineraryItems(mapDayPlaces),
-    [mapDayPlaces],
-  );
+  const lodgingPins = useLodgingPins(tripId);
 
   const activeMapItemId = hoveredPlaceId ?? selectedPlaceId;
 
@@ -259,8 +239,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   onPlaceAdded={handlePlaceAdded}
                   isPro={isPro}
                 />
-                <AiSuggestPanel trip={trip} canEdit={trip.myRole !== "VIEWER"} />
-                <ImportBookingPanel trip={trip} canEdit={trip.myRole !== "VIEWER"} />
               </div>
               <div
                 role="separator"
@@ -288,6 +266,7 @@ function TripDetailContent({ tripId }: { tripId: string }) {
               >
                 <TripMap
                   itineraryItems={itineraryItems}
+                  lodgingPins={lodgingPins}
                   activeItemId={activeMapItemId}
                   focusItemId={selectedPlaceId}
                   previewPin={mapPreview}

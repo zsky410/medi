@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { CATEGORY_LABELS, dayColor, formatDateRange, formatDayLabel, formatMoney } from "@/lib/format";
 import { Logo } from "@/components/logo";
 import { Button, Spinner } from "@/components/ui";
-import { placesToItineraryItems } from "@/components/trip/trip-map";
+import { placesToItineraryItems, tripPlacesToMapItems } from "@/components/trip/trip-map";
 
 const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m.TripMap), {
   ssr: false,
@@ -65,7 +65,8 @@ export function PublicTripView({ trip }: { trip: PublicTripDto }) {
 
   const itineraryItems = useMemo(() => {
     const allPlaces = trip.days.flatMap((d) => d.places);
-    return placesToItineraryItems(allPlaces.length > 0 ? allPlaces : trip.savedPlaces);
+    if (allPlaces.length > 0) return tripPlacesToMapItems(trip.days);
+    return placesToItineraryItems(trip.savedPlaces);
   }, [trip]);
 
   return (

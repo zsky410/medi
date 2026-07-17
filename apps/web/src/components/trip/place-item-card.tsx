@@ -4,15 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Check,
-  ChevronUp,
-  Clock,
-  DollarSign,
-  GripVertical,
-  Paperclip,
-  Trash2,
-} from "lucide-react";
+import { Check, ChevronUp, Clock, DollarSign, GripVertical, Paperclip, Trash2 } from "lucide-react";
 import type { PlaceDto, UpdatePlaceInput } from "@medi/types";
 import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
@@ -139,8 +131,7 @@ export function PlaceItemCard({
       ? `${meta.startTime} – ${meta.endTime}`
       : (meta.startTime ?? meta.endTime)!
     : "Thêm giờ";
-  const costLabel =
-    place.cost != null ? formatMoney(place.cost) : "Thêm chi phí";
+  const costLabel = place.cost != null ? formatMoney(place.cost) : "Thêm chi phí";
   const collapsedBadges = [
     hasTime ? timeLabel : null,
     place.cost != null ? formatMoney(place.cost) : null,
@@ -164,13 +155,13 @@ export function PlaceItemCard({
       )}
 
       <div
-        className={`min-w-0 flex-1 rounded-xl border px-3 py-2.5 transition-colors ${
+        className={`flex min-h-[3.5rem] min-w-0 flex-1 flex-col justify-center rounded-xl border px-3 py-2.5 transition-colors ${
           expanded || checked
             ? "border-brand-300 bg-white shadow-sm ring-2 ring-brand-100"
             : "border-[#F3E3D3] bg-white hover:border-brand-200 hover:bg-[#FFF9F2]"
         }`}
       >
-        <div className="flex items-start gap-2.5">
+        <div className={`flex gap-2.5 ${expanded ? "items-start" : "items-center"}`}>
           {expanded ? (
             <div
               className="min-w-0 flex-1"
@@ -280,8 +271,8 @@ export function PlaceItemCard({
             </button>
           )}
 
-          {canEdit && (
-            expanded ? (
+          {canEdit &&
+            (expanded ? (
               <button
                 type="button"
                 onClick={() => {
@@ -303,8 +294,7 @@ export function PlaceItemCard({
               >
                 <GripVertical size={18} />
               </button>
-            )
-          )}
+            ))}
         </div>
       </div>
 
