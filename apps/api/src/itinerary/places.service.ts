@@ -1,13 +1,26 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import type { CreatePlaceInput, ReorderPlacesInput, UpdatePlaceInput } from "@medi/types";
+import {
+  ROUTE_LODGING_ID,
+  type CreatePlaceInput,
+  type DayRouteLegsDto,
+  type OptimizeDayResult,
+  type ReorderPlacesInput,
+  type RouteLegDto,
+  type UpdatePlaceInput,
+} from "@medi/types";
+import { GeoService, type GeoPoint } from "../geo/geo.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { TripAccessService } from "../trips/trip-access.service";
+import { completeMatrix, optimizeRoute, type RouteCell } from "./route-optimizer";
+
+const ROUTE_VEHICLE = "car";
 
 @Injectable()
 export class PlacesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: TripAccessService,
+    private readonly geo: GeoService,
   ) {}
 
   async create(tripId: string, userId: string, input: CreatePlaceInput) {
@@ -87,8 +100,11 @@ export class PlacesService {
     );
   }
 
-  /** Nearest-neighbor reorder within each day (PRO route optimization). */
-  async optimizeDay(tripId: string, dayId: string, userId: string) {
+  /**
+   * TSP reorder within a day (PRO route optimization): Goong Distance Matrix
+   * for real road times, Held-Karp / Or-opt for the order, lodging as anchor.
+   */
+  async optimizeDay(tripId: string, dayId: string, userId: string): Promise<OptimizeDayResult> {
     await this.access.assertRole(tripId, userId, "EDITOR");
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     if (user.plan !== "PRO") {
@@ -97,7 +113,7 @@ export class PlacesService {
 
     const day = await this.prisma.day.findFirst({
       where: { id: dayId, tripId },
-      include: { places: true },
+      include: { places: { orderBy: { order: "asc" } } },
     });
     if (!day) throw new NotFoundException("Không tìm thấy ngày");
 
@@ -107,31 +123,97 @@ export class PlacesService {
       throw new BadRequestException("Cần ít nhất 2 địa điểm có tọa độ để tối ưu");
     }
 
-    const remaining = [...withCoords];
-    const ordered = [remaining.shift()!];
+    const { cells, anchorIndex } = await this.buildRouteCells(
+      tripId,
+      withCoords.map((p) => ({ lat: p.lat!, lng: p.lng! })),
+    );
+    const visitIndices = withCoords.map((_, i) => i);
+    const { order, totalDurationSec, totalDistanceM } = optimizeRoute(cells, visitIndices, anchorIndex);
 
-    while (remaining.length > 0) {
-      const last = ordered[ordered.length - 1];
-      let nearestIdx = 0;
-      let nearestDist = Infinity;
-      for (let i = 0; i < remaining.length; i++) {
-        const p = remaining[i];
-        const dist = Math.hypot(p.lat! - last.lat!, p.lng! - last.lng!);
-        if (dist < nearestDist) {
-          nearestDist = dist;
-          nearestIdx = i;
-        }
-      }
-      ordered.push(remaining.splice(nearestIdx, 1)[0]);
-    }
-
-    const finalOrder = [...ordered, ...withoutCoords];
+    const finalOrder = [...order.map((i) => withCoords[i]), ...withoutCoords];
     await this.prisma.$transaction(
       finalOrder.map((p, i) =>
         this.prisma.place.update({ where: { id: p.id }, data: { order: i } }),
       ),
     );
-    return { ok: true, optimized: ordered.length };
+    return { ok: true, optimized: order.length, totalDurationSec, totalDistanceM };
+  }
+
+  /** Real travel time/distance for each leg of a day, in current itinerary order. */
+  async getDayRouteLegs(tripId: string, dayId: string, userId: string): Promise<DayRouteLegsDto> {
+    await this.access.assertRole(tripId, userId, "VIEWER");
+    const day = await this.prisma.day.findFirst({
+      where: { id: dayId, tripId },
+      include: { places: { orderBy: { order: "asc" } } },
+    });
+    if (!day) throw new NotFoundException("Không tìm thấy ngày");
+
+    const placed = day.places.filter((p) => p.lat != null && p.lng != null);
+    if (placed.length === 0) return { legs: [], vehicle: ROUTE_VEHICLE };
+
+    const { cells, anchorIndex } = await this.buildRouteCells(
+      tripId,
+      placed.map((p) => ({ lat: p.lat!, lng: p.lng! })),
+    );
+
+    const legs: RouteLegDto[] = [];
+    const pushLeg = (fromId: string, toId: string, from: number, to: number) => {
+      const cell = cells[from][to];
+      legs.push({
+        fromId,
+        toId,
+        durationSec: Math.round(cell.durationSec),
+        distanceM: Math.round(cell.distanceM),
+        estimated: cell.estimated,
+      });
+    };
+
+    if (anchorIndex != null) {
+      pushLeg(ROUTE_LODGING_ID, placed[0].id, anchorIndex, 0);
+    }
+    for (let i = 0; i + 1 < placed.length; i++) {
+      pushLeg(placed[i].id, placed[i + 1].id, i, i + 1);
+    }
+    if (anchorIndex != null) {
+      pushLeg(placed[placed.length - 1].id, ROUTE_LODGING_ID, placed.length - 1, anchorIndex);
+    }
+    return { legs, vehicle: ROUTE_VEHICLE };
+  }
+
+  /**
+   * Cost matrix for a day's stops plus the (geocoded) lodging anchor when the
+   * trip has a lodging booking. Falls back to Haversine estimates per cell.
+   */
+  private async buildRouteCells(
+    tripId: string,
+    placePoints: GeoPoint[],
+  ): Promise<{ cells: RouteCell[][]; anchorIndex: number | null }> {
+    const points = [...placePoints];
+    let anchorIndex: number | null = null;
+
+    const anchor = await this.getLodgingAnchor(tripId);
+    if (anchor) {
+      anchorIndex = points.length;
+      points.push(anchor);
+    }
+
+    const matrix = points.length >= 2 ? await this.geo.distanceMatrix(points, ROUTE_VEHICLE) : null;
+    return { cells: completeMatrix(matrix, points), anchorIndex };
+  }
+
+  /** Geocode the trip's first lodging booking (name + address) as the route anchor. */
+  private async getLodgingAnchor(tripId: string): Promise<GeoPoint | null> {
+    const lodging = await this.prisma.attachment.findFirst({
+      where: { tripId, type: "lodging" },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!lodging) return null;
+
+    const meta = lodging.metadata as { address?: string } | null;
+    const title = lodging.name?.split(" · ")[0]?.trim();
+    const query = [title, meta?.address].filter(Boolean).join(", ");
+    if (!query) return null;
+    return this.geo.geocodeAddress(query);
   }
 
   private async assertPlaceInTrip(tripId: string, placeId: string) {

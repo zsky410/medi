@@ -1,6 +1,8 @@
 export interface TravelEstimate {
   minutes: number;
-  miles: number;
+  km: number;
+  /** True when the number is an estimate (mock or Haversine fallback). */
+  estimated?: boolean;
 }
 
 interface TravelPoint {
@@ -20,19 +22,20 @@ function hashString(input: string): number {
 }
 
 /**
- * Deterministic mock travel estimate between two points, keyed by their ids so
- * the value is stable across renders. Swap this for a real routing API later.
+ * Deterministic mock travel estimate between two points, keyed by their ids.
+ * Only used as a last-resort fallback when the route-legs API fails.
  */
 export function mockTravel(fromKey: string, toKey: string): TravelEstimate {
   const seed = hashString(`${fromKey}->${toKey}`);
-  const miles = Math.round(((seed % 195) / 10 + 0.6) * 10) / 10;
-  const minutes = Math.max(3, Math.round(miles * 2.4) + (seed % 6));
-  return { minutes, miles };
+  const km = Math.round(((seed % 195) / 10 + 0.6) * 10) / 10;
+  const minutes = Math.max(3, Math.round(km * 1.6) + (seed % 6));
+  return { minutes, km, estimated: true };
 }
 
 /** Vietnamese number format uses a comma as the decimal separator. */
-export function formatMiles(miles: number): string {
-  return `${miles.toFixed(1).replace(".", ",")} dặm`;
+export function formatKm(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1).replace(".", ",")} km`;
 }
 
 export function formatDuration(minutes: number): string {

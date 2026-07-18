@@ -38,6 +38,30 @@ interface GoongGeocodeResult {
   types?: string[];
 }
 
+interface GoongMatrixElement {
+  distance?: { text?: string; value?: number };
+  duration?: { text?: string; value?: number };
+  status?: string;
+}
+
+interface GoongMatrixResponse {
+  rows?: { elements?: GoongMatrixElement[] }[];
+  status?: string;
+}
+
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface MatrixCell {
+  durationSec: number;
+  distanceM: number;
+}
+
+/** NxN travel matrix; cell [i][j] is the route from point i to point j (null = unroutable). */
+export type TravelMatrix = (MatrixCell | null)[][];
+
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
@@ -45,13 +69,19 @@ interface CacheEntry<T> {
 
 const AUTOCOMPLETE_CACHE_MS = 60_000;
 const DETAIL_CACHE_MS = 5 * 60_000;
+const MATRIX_CACHE_MS = 10 * 60_000;
+const GEOCODE_CACHE_MS = 30 * 60_000;
 const CACHE_LIMIT = 200;
+const PAIR_CACHE_LIMIT = 2000;
 
 @Injectable()
 export class GeoService {
   private readonly logger = new Logger(GeoService.name);
   private readonly autocompleteCache = new Map<string, CacheEntry<GeoAutocompleteResult[]>>();
   private readonly detailCache = new Map<string, CacheEntry<GeoSearchResult>>();
+  /** Per origin->destination pair, so reordering a day reuses cached legs. */
+  private readonly pairCache = new Map<string, CacheEntry<MatrixCell>>();
+  private readonly geocodeCache = new Map<string, CacheEntry<GeoPoint | null>>();
 
   constructor(private readonly config: ConfigService) {
     const provider = this.config.get<string>("GEO_PROVIDER") ?? "nominatim";
@@ -85,6 +115,101 @@ export class GeoService {
       return this.resolveGoong(providerId.slice("goong:".length), apiKey);
     }
     throw new ServiceUnavailableException("Không thể lấy chi tiết địa điểm này");
+  }
+
+  /**
+   * NxN road-travel matrix via Goong Distance Matrix v2 (one call per origin
+   * row, skipping rows already covered by the pair cache — so reordering a day
+   * after optimization reuses the same data). Returns null when Goong is
+   * unavailable so callers can fall back to Haversine.
+   */
+  async distanceMatrix(points: GeoPoint[], vehicle = "car"): Promise<TravelMatrix | null> {
+    const apiKey = this.config.get<string>("GOONG_API_KEY");
+    if (!apiKey || points.length < 2) return null;
+
+    const n = points.length;
+    const keys = points.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`);
+    const pairKey = (i: number, j: number) => `${vehicle}:${keys[i]}>${keys[j]}`;
+
+    const matrix: TravelMatrix = keys.map(() => keys.map(() => null));
+    const missingRows: number[] = [];
+    for (let i = 0; i < n; i++) {
+      let complete = true;
+      for (let j = 0; j < n; j++) {
+        if (i === j) {
+          matrix[i][j] = { durationSec: 0, distanceM: 0 };
+          continue;
+        }
+        const cached = this.readCache(this.pairCache, pairKey(i, j));
+        if (cached) matrix[i][j] = cached;
+        else complete = false;
+      }
+      if (!complete) missingRows.push(i);
+    }
+    if (missingRows.length === 0) return matrix;
+
+    const destinations = keys.join("|");
+    const fetchedRows = await Promise.all(
+      missingRows.map(async (i): Promise<(MatrixCell | null)[] | null> => {
+        const url = new URL("https://rsapi.goong.io/v2/distancematrix");
+        url.searchParams.set("origins", keys[i]);
+        url.searchParams.set("destinations", destinations);
+        url.searchParams.set("vehicle", vehicle);
+        url.searchParams.set("api_key", apiKey);
+
+        const data = await this.fetchGoongJson<GoongMatrixResponse>(url);
+        const elements = data?.rows?.[0]?.elements;
+        if (!elements || elements.length !== n) return null;
+        return elements.map((el) =>
+          el.status === "OK" && el.duration?.value != null && el.distance?.value != null
+            ? { durationSec: el.duration.value, distanceM: el.distance.value }
+            : null,
+        );
+      }),
+    );
+
+    if (fetchedRows.some((row) => row === null)) {
+      this.logger.warn(`Distance matrix failed for ${n} points`);
+      return null;
+    }
+
+    missingRows.forEach((i, rowIdx) => {
+      const row = fetchedRows[rowIdx]!;
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        matrix[i][j] = row[j];
+        if (row[j]) this.writeCache(this.pairCache, pairKey(i, j), row[j]!, MATRIX_CACHE_MS, PAIR_CACHE_LIMIT);
+      }
+    });
+    return matrix;
+  }
+
+  /** Best-effort geocode of a free-form address/name (used to anchor the day at the lodging). */
+  async geocodeAddress(query: string): Promise<GeoPoint | null> {
+    const normalized = query.trim();
+    if (normalized.length < 2) return null;
+    const cacheKey = normalized.toLocaleLowerCase("vi-VN");
+    const cached = this.geocodeCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    let point: GeoPoint | null = null;
+    try {
+      const results = await this.autocomplete(normalized);
+      const first = results[0];
+      if (first) {
+        if (first.lat != null && first.lng != null) {
+          point = { lat: first.lat, lng: first.lng };
+        } else {
+          const detail = await this.resolve(first.providerId);
+          point = { lat: detail.lat, lng: detail.lng };
+        }
+      }
+    } catch {
+      point = null;
+    }
+
+    this.writeCache(this.geocodeCache, cacheKey, point, GEOCODE_CACHE_MS);
+    return point;
   }
 
   private async searchNominatim(query: string): Promise<GeoSearchResult[]> {
@@ -305,8 +430,14 @@ export class GeoService {
     return entry.value;
   }
 
-  private writeCache<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T, ttl: number) {
-    if (cache.size >= CACHE_LIMIT) cache.delete(cache.keys().next().value!);
+  private writeCache<T>(
+    cache: Map<string, CacheEntry<T>>,
+    key: string,
+    value: T,
+    ttl: number,
+    limit = CACHE_LIMIT,
+  ) {
+    if (cache.size >= limit) cache.delete(cache.keys().next().value!);
     cache.set(key, { value, expiresAt: Date.now() + ttl });
   }
 }

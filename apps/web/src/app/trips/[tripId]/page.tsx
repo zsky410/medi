@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { PlaceDto, TripDetailDto, TripRealtimeEvent } from "@medi/types";
+import type { TripDetailDto, TripRealtimeEvent } from "@medi/types";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTripRealtime } from "@/lib/socket";
@@ -12,8 +12,6 @@ import { AppHeader } from "@/components/app-header";
 import { RequireAuth } from "@/components/require-auth";
 import { Avatar, Button, Spinner } from "@/components/ui";
 import { ItineraryBoard } from "@/components/trip/itinerary-board";
-import { PlaceSearchModal } from "@/components/trip/place-search";
-import { PlaceEditModal } from "@/components/trip/place-edit-modal";
 import { ExpensesTab } from "@/components/trip/expenses-tab";
 import { ChecklistTab } from "@/components/trip/checklist-tab";
 import { BookingsTab } from "@/components/trip/bookings-tab";
@@ -44,8 +42,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
   const [mapPreview, setMapPreview] = useState<MapPreviewPin | null>(null);
-  const [searchTarget, setSearchTarget] = useState<{ dayId: string | null; label: string } | null>(null);
-  const [editingPlace, setEditingPlace] = useState<PlaceDto | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [itineraryWidth, setItineraryWidth] = useState(60);
@@ -140,10 +136,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
 
   const activeMapItemId = hoveredPlaceId ?? selectedPlaceId;
 
-  const handleAddPlace = useCallback((dayId: string | null, label: string) => {
-    setSearchTarget({ dayId, label });
-  }, []);
-
   const handlePlaceAdded = useCallback((id: string) => {
     setMapPreview(null);
     setSelectedPlaceId(id);
@@ -233,8 +225,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   selectedPlaceId={selectedPlaceId}
                   onSelectPlace={setSelectedPlaceId}
                   onHoverPlace={setHoveredPlaceId}
-                  onAddPlace={handleAddPlace}
-                  onEditPlace={setEditingPlace}
                   onPreviewPlace={setMapPreview}
                   onPlaceAdded={handlePlaceAdded}
                   isPro={isPro}
@@ -284,14 +274,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
         </div>
       </div>
 
-      <PlaceSearchModal
-        tripId={trip.id}
-        dayId={searchTarget?.dayId ?? null}
-        dayLabel={searchTarget?.label ?? ""}
-        open={!!searchTarget}
-        onClose={() => setSearchTarget(null)}
-      />
-      <PlaceEditModal tripId={trip.id} place={editingPlace} onClose={() => setEditingPlace(null)} />
       <MembersModal trip={trip} open={membersOpen} onClose={() => setMembersOpen(false)} />
       <ShareModal trip={trip} open={shareOpen} onClose={() => setShareOpen(false)} />
     </div>

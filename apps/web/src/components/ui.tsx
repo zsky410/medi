@@ -81,11 +81,14 @@ export function Modal({
   onClose,
   title,
   children,
+  size = "md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** `lg` fits a compact Free vs PRO comparison. */
+  size?: "md" | "lg";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -98,10 +101,14 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 cursor-pointer bg-[#2B2118]/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-[#F3E3D3] bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-        <div className="mb-4 flex items-center justify-between">
+      <div
+        className={`relative w-full rounded-2xl border border-[#F3E3D3] bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150 ${
+          size === "lg" ? "max-w-3xl max-h-[min(92dvh,880px)] overflow-y-auto" : "max-w-md"
+        }`}
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-xl font-display font-extrabold text-[#2B2118]">{title}</h2>
-          <button onClick={onClose} className="cursor-pointer rounded-full p-1 text-[#8A7563] hover:bg-[#FFF3EB] hover:text-[#2B2118]" aria-label="Đóng">
+          <button onClick={onClose} className="cursor-pointer shrink-0 rounded-full p-1 text-[#8A7563] hover:bg-[#FFF3EB] hover:text-[#2B2118]" aria-label="Đóng">
             ✕
           </button>
         </div>

@@ -14,22 +14,27 @@ import {
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, MapPinned, Trash2, X } from "lucide-react";
-import type {
-  AttachmentDto,
-  CreatePlaceInput,
-  PlaceDto,
-  ReorderPlacesInput,
-  TripDetailDto,
+import {
+  ROUTE_LODGING_ID,
+  type AttachmentDto,
+  type CreatePlaceInput,
+  type PlaceDto,
+  type ReorderPlacesInput,
+  type RouteLegDto,
+  type TripDetailDto,
 } from "@medi/types";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { getBookingMetadata, getBookingTitle } from "@/lib/booking-display";
 import { dayColor, formatDayLabel } from "@/lib/format";
 import { loadPlaceMeta, patchPlaceMeta, type PlaceMeta } from "@/lib/place-meta";
-import { directionsUrl, mockTravel } from "@/lib/travel";
+import { directionsUrl, mockTravel, type TravelEstimate } from "@/lib/travel";
+import { useDayRouteLegs } from "@/lib/use-day-route-legs";
+import { Spinner } from "@/components/ui";
 import { DiscoverPlacesBar } from "@/components/trip/discover-places-bar";
 import { LodgingPinCard } from "@/components/trip/lodging-pin-card";
 import { PlaceCostModal } from "@/components/trip/place-cost-modal";
 import { PlaceItemCard } from "@/components/trip/place-item-card";
+import { UpgradePrompt } from "@/components/trip/pro-tools";
 import { TravelSegment } from "@/components/trip/travel-segment";
 import type { MapPreviewPin } from "@/components/trip/trip-map";
 
@@ -218,8 +223,10 @@ function DayColumn({
   children,
   footer,
   canEdit,
-  onAdd,
   onOptimize,
+  optimizing = false,
+  optimizeLocked = false,
+  notice,
 }: {
   containerId: string;
   title: string;
@@ -230,8 +237,13 @@ function DayColumn({
   children: React.ReactNode;
   footer?: React.ReactNode;
   canEdit: boolean;
-  onAdd?: () => void;
   onOptimize?: () => void;
+  /** Optimization request in flight for this day. */
+  optimizing?: boolean;
+  /** Non-PRO user: show the PRO badge (click opens the upgrade prompt). */
+  optimizeLocked?: boolean;
+  /** Inline error/notice shown under the header (e.g. optimize failures). */
+  notice?: string;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: containerId });
   const isUnassigned = containerId === UNASSIGNED;
@@ -253,28 +265,28 @@ function DayColumn({
           <h3 className="text-base font-display font-extrabold text-[#2B2118]">{title}</h3>
           {subtitle && <span className="text-xs font-bold text-[#8A7563] bg-[#FFF3EB] px-2 py-0.5 rounded-full">{subtitle}</span>}
         </div>
-        {canEdit && (onAdd || onOptimize) && (
-          <div className="flex items-center gap-1.5">
-            {onOptimize && placeIds.length >= 2 && (
-              <button
-                onClick={onOptimize}
-                className="rounded-full px-2.5 py-1 text-[10px] font-extrabold text-[#8B5CF6] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
-                title="Tối ưu lộ trình PRO"
-              >
-                ⚡ Tối ưu
-              </button>
+        {canEdit && onOptimize && (
+          <button
+            onClick={onOptimize}
+            disabled={optimizing}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold text-[#8B5CF6] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors disabled:opacity-60"
+            title="Tối ưu thứ tự địa điểm theo thời gian di chuyển"
+          >
+            {optimizing ? <Spinner className="size-3.5" /> : <span aria-hidden>⚡</span>}
+            Tối ưu lộ trình
+            {optimizeLocked && (
+              <span className="rounded bg-brand-500 px-1 py-0.5 text-[9px] font-extrabold text-white">
+                PRO
+              </span>
             )}
-            {onAdd && (
-              <button
-                onClick={onAdd}
-                className="rounded-full px-3 py-1 text-xs font-extrabold text-brand-500 bg-[#FFF3EB] hover:bg-[#FFE1CF] border border-[#FFE1CF] transition-colors"
-              >
-                + Thêm chỗ chơi
-              </button>
-            )}
-          </div>
+          </button>
         )}
       </header>
+      {notice && (
+        <p className="mb-2.5 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600">
+          {notice}
+        </p>
+      )}
       {pinned != null && (
         <div className={`mb-2.5 space-y-2.5 ${canEdit ? "pl-6 pr-9" : ""}`}>{pinned}</div>
       )}
@@ -301,13 +313,27 @@ function DayColumn({
   );
 }
 
+/** Render-prop wrapper so each day column can call the route-legs hook. */
+function DayRouteLegsProvider({
+  tripId,
+  dayId,
+  orderedIds,
+  children,
+}: {
+  tripId: string;
+  dayId: string;
+  orderedIds: string[];
+  children: (legs: Map<string, RouteLegDto> | null, failed: boolean) => ReactNode;
+}) {
+  const { legsByFrom, isError } = useDayRouteLegs(tripId, dayId, orderedIds);
+  return <>{children(legsByFrom, isError)}</>;
+}
+
 export function ItineraryBoard({
   trip,
   selectedPlaceId,
   onSelectPlace,
   onHoverPlace,
-  onAddPlace,
-  onEditPlace,
   onPreviewPlace,
   onPlaceAdded,
   isPro = false,
@@ -316,8 +342,6 @@ export function ItineraryBoard({
   selectedPlaceId: string | null;
   onSelectPlace: (id: string | null) => void;
   onHoverPlace?: (id: string | null) => void;
-  onAddPlace: (dayId: string | null, dayLabel: string) => void;
-  onEditPlace: (place: PlaceDto) => void;
   onPreviewPlace?: (pin: MapPreviewPin | null) => void;
   onPlaceAdded?: (placeId: string) => void;
   isPro?: boolean;
@@ -328,6 +352,8 @@ export function ItineraryBoard({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [placeMeta, setPlaceMeta] = useState<Record<string, PlaceMeta>>(() => loadPlaceMeta(trip.id));
   const [costPlace, setCostPlace] = useState<PlaceDto | null>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [optimizeError, setOptimizeError] = useState<{ dayId: string; message: string } | null>(null);
   const draggingRef = useRef(false);
   const tripLayoutKey = useMemo(() => containersSignature(trip), [trip]);
   const allPlaceIdsKey = useMemo(() => placeIdsSignature(trip), [trip]);
@@ -486,8 +512,33 @@ export function ItineraryBoard({
   const optimizeMutation = useMutation({
     mutationFn: (dayId: string) =>
       api(`/trips/${trip.id}/places/days/${dayId}/optimize`, { method: "POST" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trip", trip.id] }),
+    onSuccess: () => {
+      setOptimizeError(null);
+      queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
+    },
+    onError: (err, dayId) =>
+      setOptimizeError({
+        dayId,
+        message: err instanceof ApiError ? err.message : "Không tối ưu được lộ trình",
+      }),
   });
+  const optimizingDayId = optimizeMutation.isPending ? optimizeMutation.variables : null;
+
+  function handleOptimize(dayId: string, locatedCount: number) {
+    if (!isPro) {
+      setUpgradeOpen(true);
+      return;
+    }
+    if (locatedCount < 2) {
+      setOptimizeError({
+        dayId,
+        message: "Cần ít nhất 2 địa điểm có toạ độ trong ngày để tối ưu lộ trình.",
+      });
+      return;
+    }
+    setOptimizeError(null);
+    optimizeMutation.mutate(dayId);
+  }
 
   const findContainer = useCallback(
     (id: string): string | undefined => {
@@ -588,7 +639,31 @@ export function ItineraryBoard({
     return lodgings.map((lodging) => <LodgingPinCard key={lodging.id} lodging={lodging} />);
   }
 
-  function renderPlaces(containerId: string) {
+  /** Leg estimate for a segment: real data when loaded, "…" while loading, mock on failure. */
+  function resolveEstimate(
+    legs: Map<string, RouteLegDto> | null,
+    legsFailed: boolean,
+    legFromKey: string,
+    mockFrom: string,
+    mockTo: string,
+  ): TravelEstimate | null {
+    const leg = legs?.get(legFromKey);
+    if (leg) {
+      return {
+        minutes: Math.max(1, Math.round(leg.durationSec / 60)),
+        km: leg.distanceM / 1000,
+        estimated: leg.estimated,
+      };
+    }
+    if (!legs && !legsFailed) return null;
+    return mockTravel(mockFrom, mockTo);
+  }
+
+  function renderPlaces(
+    containerId: string,
+    legs: Map<string, RouteLegDto> | null = null,
+    legsFailed = false,
+  ) {
     const dayIdx = dayIndexByContainer.get(containerId);
     const color = containerId === UNASSIGNED ? "#8A7563" : dayColor(dayIdx ?? 0);
     const ids = containers[containerId] ?? [];
@@ -615,7 +690,7 @@ export function ItineraryBoard({
         nodes.push(
           <TravelSegment
             key="seg-start"
-            estimate={mockTravel(dayLodging.id, first.id)}
+            estimate={resolveEstimate(legs, legsFailed, ROUTE_LODGING_ID, dayLodging.id, first.id)}
             connectorLeft={connectorLeft}
             directionsHref={directionsUrl(lodgingPoint, first)}
           />,
@@ -635,7 +710,7 @@ export function ItineraryBoard({
         nodes.push(
           <TravelSegment
             key={`seg-${place.id}`}
-            estimate={mockTravel(place.id, next.id)}
+            estimate={resolveEstimate(legs, legsFailed, place.id, place.id, next.id)}
             connectorLeft={connectorLeft}
             directionsHref={directionsUrl(place, next)}
           />,
@@ -644,7 +719,7 @@ export function ItineraryBoard({
         nodes.push(
           <TravelSegment
             key={`seg-end-${place.id}`}
-            estimate={mockTravel(place.id, dayLodging.id)}
+            estimate={resolveEstimate(legs, legsFailed, place.id, place.id, dayLodging.id)}
             connectorLeft={connectorLeft}
             directionsHref={directionsUrl(place, lodgingPoint)}
             destinationLabel={lodgingLabel}
@@ -694,6 +769,11 @@ export function ItineraryBoard({
           {renderPlaces(UNASSIGNED)}
         </DayColumn>
         {trip.days.map((day, i) => {
+          const dayPlaceIds = containers[day.id] ?? EMPTY_PLACE_IDS;
+          const locatedCount = dayPlaceIds.filter((id) => {
+            const place = placesById.get(id);
+            return place?.lat != null && place?.lng != null;
+          }).length;
           return (
             <DayColumn
               key={day.id}
@@ -701,13 +781,17 @@ export function ItineraryBoard({
               title={`Ngày ${i + 1}`}
               subtitle={formatDayLabel(day.date)}
               color={dayColor(i)}
-              placeIds={containers[day.id] ?? EMPTY_PLACE_IDS}
+              placeIds={dayPlaceIds}
               pinned={renderLodgingPins()}
               canEdit={canEdit}
-              onAdd={() => onAddPlace(day.id, `Ngày ${i + 1} (${formatDayLabel(day.date)})`)}
-              onOptimize={isPro && canEdit ? () => optimizeMutation.mutate(day.id) : undefined}
+              onOptimize={() => handleOptimize(day.id, locatedCount)}
+              optimizing={optimizingDayId === day.id}
+              optimizeLocked={!isPro}
+              notice={optimizeError?.dayId === day.id ? optimizeError.message : undefined}
             >
-              {renderPlaces(day.id)}
+              <DayRouteLegsProvider tripId={trip.id} dayId={day.id} orderedIds={dayPlaceIds}>
+                {(legs, failed) => renderPlaces(day.id, legs, failed)}
+              </DayRouteLegsProvider>
             </DayColumn>
           );
         })}
@@ -722,6 +806,11 @@ export function ItineraryBoard({
         updatePlaceMeta(costPlace.id, { costDescription: description });
       }}
       onClose={() => setCostPlace(null)}
+    />
+    <UpgradePrompt
+      open={upgradeOpen}
+      onClose={() => setUpgradeOpen(false)}
+      feature="Tối ưu lộ trình"
     />
     </>
   );

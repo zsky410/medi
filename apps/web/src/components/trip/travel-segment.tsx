@@ -1,12 +1,13 @@
 "use client";
 
 import { Car, CornerDownRight, ExternalLink } from "lucide-react";
-import { formatDuration, formatMiles, type TravelEstimate } from "@/lib/travel";
+import { formatDuration, formatKm, type TravelEstimate } from "@/lib/travel";
 
 /**
  * Connector shown between two consecutive itinerary stops. Renders a dashed
- * line aligned under the place pins plus a mock travel estimate. When
- * `destinationLabel` is set it marks the final leg to the lodging.
+ * line aligned under the place pins plus the travel time/distance for the leg
+ * (null while loading). When `destinationLabel` is set it marks the final leg
+ * to the lodging.
  */
 export function TravelSegment({
   estimate,
@@ -14,7 +15,7 @@ export function TravelSegment({
   directionsHref,
   destinationLabel,
 }: {
-  estimate: TravelEstimate;
+  estimate: TravelEstimate | null;
   connectorLeft: number;
   directionsHref: string;
   destinationLabel?: string;
@@ -35,7 +36,9 @@ export function TravelSegment({
       <div className="flex min-w-0 flex-col justify-center py-1.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#8A7563]">
           <span>
-            {formatDuration(estimate.minutes)} · {formatMiles(estimate.miles)}
+            {estimate
+              ? `${formatDuration(estimate.minutes)} · ${formatKm(estimate.km)}${estimate.estimated ? " (ước tính)" : ""}`
+              : "…"}
           </span>
           <a
             href={directionsHref}

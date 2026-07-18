@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Headers, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import {
   createPlaceSchema,
   reorderPlacesSchema,
@@ -43,6 +43,15 @@ export class PlacesController {
     const result = await this.places.optimizeDay(tripId, dayId, user.id);
     this.realtime.emitToTrip(tripId, { type: "itinerary:changed" }, socketId);
     return result;
+  }
+
+  @Get("days/:dayId/route-legs")
+  routeLegs(
+    @CurrentUser() user: JwtUser,
+    @Param("tripId") tripId: string,
+    @Param("dayId") dayId: string,
+  ) {
+    return this.places.getDayRouteLegs(tripId, dayId, user.id);
   }
 
   @Patch("reorder")
