@@ -27,8 +27,10 @@ import { api, ApiError } from "@/lib/api";
 import { getBookingMetadata, getBookingTitle } from "@/lib/booking-display";
 import { dayColor, formatDayLabel } from "@/lib/format";
 import { loadPlaceMeta, patchPlaceMeta, type PlaceMeta } from "@/lib/place-meta";
+import { buildDayStops, buildMapsUrl } from "@/lib/maps-export";
 import { directionsUrl, mockTravel, type TravelEstimate } from "@/lib/travel";
 import { useDayRouteLegs } from "@/lib/use-day-route-legs";
+import { useLodgingPins } from "@/lib/use-lodging-pins";
 import { Spinner } from "@/components/ui";
 import { DiscoverPlacesBar } from "@/components/trip/discover-places-bar";
 import { LodgingPinCard } from "@/components/trip/lodging-pin-card";
@@ -226,6 +228,8 @@ function DayColumn({
   onOptimize,
   optimizing = false,
   optimizeLocked = false,
+  onExport,
+  exportLocked = false,
   notice,
 }: {
   containerId: string;
@@ -242,6 +246,10 @@ function DayColumn({
   optimizing?: boolean;
   /** Non-PRO user: show the PRO badge (click opens the upgrade prompt). */
   optimizeLocked?: boolean;
+  /** Export the day's route to Google Maps. */
+  onExport?: () => void;
+  /** Non-PRO user: show the PRO badge on the export button. */
+  exportLocked?: boolean;
   /** Inline error/notice shown under the header (e.g. optimize failures). */
   notice?: string;
 }) {
@@ -265,21 +273,40 @@ function DayColumn({
           <h3 className="text-base font-display font-extrabold text-[#2B2118]">{title}</h3>
           {subtitle && <span className="text-xs font-bold text-[#8A7563] bg-[#FFF3EB] px-2 py-0.5 rounded-full">{subtitle}</span>}
         </div>
-        {canEdit && onOptimize && (
-          <button
-            onClick={onOptimize}
-            disabled={optimizing}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold text-[#8B5CF6] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors disabled:opacity-60"
-            title="Tối ưu thứ tự địa điểm theo thời gian di chuyển"
-          >
-            {optimizing ? <Spinner className="size-3.5" /> : <span aria-hidden>⚡</span>}
-            Tối ưu lộ trình
-            {optimizeLocked && (
-              <span className="rounded bg-brand-500 px-1 py-0.5 text-[9px] font-extrabold text-white">
-                PRO
-              </span>
+        {canEdit && (onOptimize || onExport) && (
+          <div className="flex items-center gap-1.5">
+            {onOptimize && (
+              <button
+                onClick={onOptimize}
+                disabled={optimizing}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold text-[#8B5CF6] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors disabled:opacity-60"
+                title="Tối ưu thứ tự địa điểm theo thời gian di chuyển"
+              >
+                {optimizing ? <Spinner className="size-3.5" /> : <span aria-hidden>⚡</span>}
+                Tối ưu lộ trình
+                {optimizeLocked && (
+                  <span className="rounded bg-brand-500 px-1 py-0.5 text-[9px] font-extrabold text-white">
+                    PRO
+                  </span>
+                )}
+              </button>
             )}
-          </button>
+            {onExport && (
+              <button
+                onClick={onExport}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold text-brand-600 bg-[#FFF3EB] hover:bg-[#FFE1CF] border border-[#FFE1CF] transition-colors"
+                title="Mở toàn bộ lộ trình trong ngày trên Google Maps"
+              >
+                <MapPinned size={13} />
+                Xuất lộ trình
+                {exportLocked && (
+                  <span className="rounded bg-brand-500 px-1 py-0.5 text-[9px] font-extrabold text-white">
+                    PRO
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         )}
       </header>
       {notice && (
@@ -352,8 +379,8 @@ export function ItineraryBoard({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [placeMeta, setPlaceMeta] = useState<Record<string, PlaceMeta>>(() => loadPlaceMeta(trip.id));
   const [costPlace, setCostPlace] = useState<PlaceDto | null>(null);
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [optimizeError, setOptimizeError] = useState<{ dayId: string; message: string } | null>(null);
+  const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
+  const [dayNotice, setDayNotice] = useState<{ dayId: string; message: string } | null>(null);
   const draggingRef = useRef(false);
   const tripLayoutKey = useMemo(() => containersSignature(trip), [trip]);
   const allPlaceIdsKey = useMemo(() => placeIdsSignature(trip), [trip]);
@@ -402,6 +429,7 @@ export function ItineraryBoard({
     () => (attachments ?? []).filter((a) => a.type === "lodging"),
     [attachments],
   );
+  const lodgingPins = useLodgingPins(trip.id);
 
   const dayIndexByContainer = useMemo(() => {
     const map = new Map<string, number>();
@@ -513,11 +541,11 @@ export function ItineraryBoard({
     mutationFn: (dayId: string) =>
       api(`/trips/${trip.id}/places/days/${dayId}/optimize`, { method: "POST" }),
     onSuccess: () => {
-      setOptimizeError(null);
+      setDayNotice(null);
       queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
     },
     onError: (err, dayId) =>
-      setOptimizeError({
+      setDayNotice({
         dayId,
         message: err instanceof ApiError ? err.message : "Không tối ưu được lộ trình",
       }),
@@ -526,18 +554,41 @@ export function ItineraryBoard({
 
   function handleOptimize(dayId: string, locatedCount: number) {
     if (!isPro) {
-      setUpgradeOpen(true);
+      setUpgradeFeature("Tối ưu lộ trình");
       return;
     }
     if (locatedCount < 2) {
-      setOptimizeError({
+      setDayNotice({
         dayId,
         message: "Cần ít nhất 2 địa điểm có toạ độ trong ngày để tối ưu lộ trình.",
       });
       return;
     }
-    setOptimizeError(null);
+    setDayNotice(null);
     optimizeMutation.mutate(dayId);
+  }
+
+  function handleExport(day: TripDetailDto["days"][number]) {
+    if (!isPro) {
+      setUpgradeFeature("Xuất lịch trình sang Google Maps");
+      return;
+    }
+    const lodgingPoint = lodgingPins[0]
+      ? { lat: lodgingPins[0].latitude, lng: lodgingPins[0].longitude }
+      : null;
+    const orderedPlaces = (containers[day.id] ?? [])
+      .map((id) => placesById.get(id))
+      .filter((p): p is PlaceDto => p != null);
+    const url = buildMapsUrl(buildDayStops(orderedPlaces, lodgingPoint));
+    if (!url) {
+      setDayNotice({
+        dayId: day.id,
+        message: "Chưa có địa điểm có toạ độ để xuất lộ trình.",
+      });
+      return;
+    }
+    setDayNotice(null);
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   const findContainer = useCallback(
@@ -787,7 +838,9 @@ export function ItineraryBoard({
               onOptimize={() => handleOptimize(day.id, locatedCount)}
               optimizing={optimizingDayId === day.id}
               optimizeLocked={!isPro}
-              notice={optimizeError?.dayId === day.id ? optimizeError.message : undefined}
+              onExport={() => handleExport(day)}
+              exportLocked={!isPro}
+              notice={dayNotice?.dayId === day.id ? dayNotice.message : undefined}
             >
               <DayRouteLegsProvider tripId={trip.id} dayId={day.id} orderedIds={dayPlaceIds}>
                 {(legs, failed) => renderPlaces(day.id, legs, failed)}
@@ -808,9 +861,9 @@ export function ItineraryBoard({
       onClose={() => setCostPlace(null)}
     />
     <UpgradePrompt
-      open={upgradeOpen}
-      onClose={() => setUpgradeOpen(false)}
-      feature="Tối ưu lộ trình"
+      open={upgradeFeature != null}
+      onClose={() => setUpgradeFeature(null)}
+      feature={upgradeFeature ?? "Tối ưu lộ trình"}
     />
     </>
   );

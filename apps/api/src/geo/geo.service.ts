@@ -49,6 +49,11 @@ interface GoongMatrixResponse {
   status?: string;
 }
 
+interface GoongDirectionResponse {
+  routes?: { overview_polyline?: { points?: string } }[];
+  status?: string;
+}
+
 export interface GeoPoint {
   lat: number;
   lng: number;
@@ -70,6 +75,7 @@ interface CacheEntry<T> {
 const AUTOCOMPLETE_CACHE_MS = 60_000;
 const DETAIL_CACHE_MS = 5 * 60_000;
 const MATRIX_CACHE_MS = 10 * 60_000;
+const PATH_CACHE_MS = 10 * 60_000;
 const GEOCODE_CACHE_MS = 30 * 60_000;
 const CACHE_LIMIT = 200;
 const PAIR_CACHE_LIMIT = 2000;
@@ -82,6 +88,8 @@ export class GeoService {
   /** Per origin->destination pair, so reordering a day reuses cached legs. */
   private readonly pairCache = new Map<string, CacheEntry<MatrixCell>>();
   private readonly geocodeCache = new Map<string, CacheEntry<GeoPoint | null>>();
+  /** Encoded overview polyline per ordered point list. */
+  private readonly pathCache = new Map<string, CacheEntry<string | null>>();
 
   constructor(private readonly config: ConfigService) {
     const provider = this.config.get<string>("GEO_PROVIDER") ?? "nominatim";
@@ -210,6 +218,37 @@ export class GeoService {
 
     this.writeCache(this.geocodeCache, cacheKey, point, GEOCODE_CACHE_MS);
     return point;
+  }
+
+  /**
+   * Encoded road-route polyline (Goong Directions v2 overview_polyline) for an
+   * ordered list of points. Returns null when Goong is unavailable or the route
+   * cannot be computed (e.g. too many waypoints), so callers can skip drawing.
+   */
+  async directionsPath(points: GeoPoint[], vehicle = "car"): Promise<string | null> {
+    const apiKey = this.config.get<string>("GOONG_API_KEY");
+    if (!apiKey || points.length < 2) return null;
+
+    const coords = points.map((p) => `${p.lat},${p.lng}`);
+    const roundedKey = points.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join("|");
+    const cacheKey = `${vehicle}:${roundedKey}`;
+    const cached = this.pathCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    // Goong passes intermediate stops through `destination` itself, joined by
+    // ";" (origin -> dest1 -> dest2 -> ...); there is no separate waypoints param.
+    const url = new URL("https://rsapi.goong.io/v2/direction");
+    url.searchParams.set("origin", coords[0]);
+    url.searchParams.set("destination", coords.slice(1).join(";"));
+    url.searchParams.set("vehicle", vehicle);
+    url.searchParams.set("api_key", apiKey);
+
+    const data = await this.fetchGoongJson<GoongDirectionResponse>(url);
+    const encoded = data?.routes?.[0]?.overview_polyline?.points ?? null;
+    if (!encoded) this.logger.warn(`Directions path failed for ${points.length} points`);
+
+    this.writeCache(this.pathCache, cacheKey, encoded, PATH_CACHE_MS);
+    return encoded;
   }
 
   private async searchNominatim(query: string): Promise<GeoSearchResult[]> {

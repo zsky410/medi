@@ -7,7 +7,7 @@ import type { TripDetailDto, TripRealtimeEvent } from "@medi/types";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTripRealtime } from "@/lib/socket";
-import { formatDateRange } from "@/lib/format";
+import { dayColor, formatDateRange } from "@/lib/format";
 import { AppHeader } from "@/components/app-header";
 import { RequireAuth } from "@/components/require-auth";
 import { Avatar, Button, Spinner } from "@/components/ui";
@@ -18,10 +18,11 @@ import { BookingsTab } from "@/components/trip/bookings-tab";
 import { TripSetupPanel } from "@/components/trip/trip-setup-panel";
 import { MembersModal } from "@/components/trip/members-modal";
 import { ShareModal } from "@/components/trip/share-modal";
-import { ExportMapsButton, loadOfflineSnapshot, saveOfflineSnapshot } from "@/components/trip/pro-tools";
+import { loadOfflineSnapshot, saveOfflineSnapshot } from "@/components/trip/pro-tools";
 import { TripTabSidebar, type TripTab } from "@/components/trip/trip-tab-sidebar";
 import { tripPlacesToMapItems, type MapPreviewPin } from "@/components/trip/trip-map";
 import { useLodgingPins } from "@/lib/use-lodging-pins";
+import { useDayRoutePath } from "@/lib/use-day-route-path";
 
 const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m.TripMap), {
   ssr: false,
@@ -136,6 +137,29 @@ function TripDetailContent({ tripId }: { tripId: string }) {
 
   const activeMapItemId = hoveredPlaceId ?? selectedPlaceId;
 
+  // Active day = the day containing the hovered/selected place (null when the
+  // place is in "Discover" or nothing is active). Drives the road route line.
+  const activeDayIndex = useMemo(() => {
+    if (!trip || !activeMapItemId) return -1;
+    return trip.days.findIndex((d) => d.places.some((p) => p.id === activeMapItemId));
+  }, [trip, activeMapItemId]);
+  const activeDay = activeDayIndex >= 0 ? trip!.days[activeDayIndex] : null;
+  const activeDayPlaceIds = useMemo(
+    () =>
+      activeDay
+        ? activeDay.places.filter((p) => p.lat != null && p.lng != null).map((p) => p.id)
+        : [],
+    [activeDay],
+  );
+  const routeCoords = useDayRoutePath(tripId, activeDay?.id ?? null, activeDayPlaceIds);
+  const routePath = useMemo(
+    () =>
+      routeCoords && activeDayIndex >= 0
+        ? { coordinates: routeCoords, color: dayColor(activeDayIndex) }
+        : null,
+    [routeCoords, activeDayIndex],
+  );
+
   const handlePlaceAdded = useCallback((id: string) => {
     setMapPreview(null);
     setSelectedPlaceId(id);
@@ -200,7 +224,6 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                 <Button onClick={() => setMembersOpen(true)} className="text-xs">
                   Rủ bạn +
                 </Button>
-                {tab === "itinerary" && <ExportMapsButton trip={trip} isPro={isPro} />}
               </div>
             </div>
           </div>
@@ -260,6 +283,7 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   activeItemId={activeMapItemId}
                   focusItemId={selectedPlaceId}
                   previewPin={mapPreview}
+                  routePath={routePath}
                   onMarkerClick={setSelectedPlaceId}
                 />
               </div>

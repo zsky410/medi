@@ -54,6 +54,15 @@ export class PlacesController {
     return this.places.getDayRouteLegs(tripId, dayId, user.id);
   }
 
+  @Get("days/:dayId/route-path")
+  routePath(
+    @CurrentUser() user: JwtUser,
+    @Param("tripId") tripId: string,
+    @Param("dayId") dayId: string,
+  ) {
+    return this.places.getDayRoutePath(tripId, dayId, user.id);
+  }
+
   @Patch("reorder")
   async reorder(
     @CurrentUser() user: JwtUser,

@@ -3,6 +3,7 @@ import {
   ROUTE_LODGING_ID,
   type CreatePlaceInput,
   type DayRouteLegsDto,
+  type DayRoutePathDto,
   type OptimizeDayResult,
   type ReorderPlacesInput,
   type RouteLegDto,
@@ -178,6 +179,29 @@ export class PlacesService {
       pushLeg(placed[placed.length - 1].id, ROUTE_LODGING_ID, placed.length - 1, anchorIndex);
     }
     return { legs, vehicle: ROUTE_VEHICLE };
+  }
+
+  /** Real road-route polyline (Goong Directions) for a day's stops, lodging-anchored. */
+  async getDayRoutePath(tripId: string, dayId: string, userId: string): Promise<DayRoutePathDto> {
+    await this.access.assertRole(tripId, userId, "VIEWER");
+    const day = await this.prisma.day.findFirst({
+      where: { id: dayId, tripId },
+      include: { places: { orderBy: { order: "asc" } } },
+    });
+    if (!day) throw new NotFoundException("Không tìm thấy ngày");
+
+    const placed = day.places.filter((p) => p.lat != null && p.lng != null);
+    const points: GeoPoint[] = placed.map((p) => ({ lat: p.lat!, lng: p.lng! }));
+
+    const anchor = await this.getLodgingAnchor(tripId);
+    if (anchor) {
+      points.unshift(anchor);
+      points.push(anchor);
+    }
+
+    if (points.length < 2) return { encodedPolyline: null, vehicle: ROUTE_VEHICLE };
+    const encodedPolyline = await this.geo.directionsPath(points, ROUTE_VEHICLE);
+    return { encodedPolyline, vehicle: ROUTE_VEHICLE };
   }
 
   /**

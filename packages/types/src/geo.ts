@@ -32,6 +32,12 @@ export interface DayRouteLegsDto {
   vehicle: string;
 }
 
+export interface DayRoutePathDto {
+  /** Goong Directions v2 encoded overview polyline; null when unavailable. */
+  encodedPolyline: string | null;
+  vehicle: string;
+}
+
 export interface OptimizeDayResult {
   ok: boolean;
   optimized: number;

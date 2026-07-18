@@ -39,6 +39,20 @@ export interface LodgingMapPin {
   longitude: number;
 }
 
+export interface RoutePath {
+  /** Ordered [lng, lat] pairs of the day's road route. */
+  coordinates: [number, number][];
+  color: string;
+}
+
+const ROUTE_SOURCE_ID = "medi-route-path";
+const ROUTE_LAYER_ID = "medi-route-path-line";
+const ROUTE_CASING_LAYER_ID = "medi-route-path-casing";
+const EMPTY_FEATURE_COLLECTION = {
+  type: "FeatureCollection" as const,
+  features: [],
+};
+
 const BED_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>';
 
@@ -140,6 +154,56 @@ function createLodgingMarkerElement(pin: LodgingMapPin): HTMLButtonElement {
   return el;
 }
 
+function routeFeatureCollection(routePath: RoutePath | null) {
+  if (!routePath || routePath.coordinates.length < 2) return EMPTY_FEATURE_COLLECTION;
+  return {
+    type: "FeatureCollection" as const,
+    features: [
+      {
+        type: "Feature" as const,
+        properties: { color: routePath.color },
+        geometry: { type: "LineString" as const, coordinates: routePath.coordinates },
+      },
+    ],
+  };
+}
+
+// Adds the route source + line layers if missing. Must run after every
+// `style.load` because switching styles (Goong -> fallback) drops custom layers.
+function ensureRouteLayers(map: MLMap, routePath: RoutePath | null) {
+  if (!map.getSource(ROUTE_SOURCE_ID)) {
+    map.addSource(ROUTE_SOURCE_ID, {
+      type: "geojson",
+      data: routeFeatureCollection(routePath),
+    });
+  }
+  if (!map.getLayer(ROUTE_CASING_LAYER_ID)) {
+    map.addLayer({
+      id: ROUTE_CASING_LAYER_ID,
+      type: "line",
+      source: ROUTE_SOURCE_ID,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 },
+    });
+  }
+  if (!map.getLayer(ROUTE_LAYER_ID)) {
+    map.addLayer({
+      id: ROUTE_LAYER_ID,
+      type: "line",
+      source: ROUTE_SOURCE_ID,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": ["get", "color"], "line-width": 4 },
+    });
+  }
+}
+
+function setRoutePathData(map: MLMap, routePath: RoutePath | null) {
+  const source = map.getSource(ROUTE_SOURCE_ID);
+  if (source && "setData" in source) {
+    (source as maplibregl.GeoJSONSource).setData(routeFeatureCollection(routePath));
+  }
+}
+
 function getMapErrorText(event: unknown): string {
   if (!event || typeof event !== "object") return "";
   const error = "error" in event ? event.error : event;
@@ -155,6 +219,7 @@ export function TripMap({
   activeItemId = null,
   focusItemId = null,
   previewPin = null,
+  routePath = null,
   onMarkerClick,
 }: {
   itineraryItems: ItineraryMapItem[];
@@ -166,6 +231,8 @@ export function TripMap({
   focusItemId?: string | null;
   /** Temporary pin while browsing discover search results. */
   previewPin?: MapPreviewPin | null;
+  /** Road route line for the active day (null hides it). */
+  routePath?: RoutePath | null;
   onMarkerClick?: (id: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -177,10 +244,12 @@ export function TripMap({
   const onMarkerClickRef = useRef(onMarkerClick);
   const activeItemIdRef = useRef(activeItemId);
   const focusItemIdRef = useRef(focusItemId);
+  const routePathRef = useRef(routePath);
 
   onMarkerClickRef.current = onMarkerClick;
   activeItemIdRef.current = activeItemId;
   focusItemIdRef.current = focusItemId;
+  routePathRef.current = routePath;
 
   // Init map once.
   useEffect(() => {
@@ -198,6 +267,10 @@ export function TripMap({
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
+
+    // Re-add the route source/layers after each style load (initial load and
+    // after the Goong -> fallback swap, which drops all custom layers).
+    map.on("style.load", () => ensureRouteLayers(map, routePathRef.current));
 
     let switchedToFallbackStyle = false;
     map.on("error", (event) => {
@@ -359,6 +432,18 @@ export function TripMap({
       essential: true,
     });
   }, [previewPin]);
+
+  // Draw / update / clear the active day's road route line.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      ensureRouteLayers(map, routePath);
+      setRoutePathData(map, routePath);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+  }, [routePath]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
