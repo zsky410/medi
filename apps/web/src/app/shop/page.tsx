@@ -29,7 +29,7 @@ export default function ShopPage() {
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 py-10 w-full text-left">
         <div className="text-center mb-10">
           <h1 className="font-display font-extrabold text-4xl sm:text-5xl text-[#2B2118] mb-3">Creator Shop 🛍️</h1>
-          <p className="text-[#8A7563] text-lg font-bold">Mua guide du lịch từ KOL, remix về tài khoản của bạn</p>
+          <p className="text-[#8A7563] text-lg font-bold">Nơi bán plan/guide du lịch; kèo chia sẻ miễn phí nằm ở Khám phá</p>
           <Link href="/creator" className="inline-block mt-4 text-sm font-extrabold text-brand-500 hover:underline">
             Đăng guide của bạn →
           </Link>

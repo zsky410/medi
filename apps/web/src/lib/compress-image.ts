@@ -5,9 +5,9 @@ export interface CompressImageOptions {
   maxHeight: number;
   /** Target max output size in bytes (base64 string length proxy). */
   maxBytes: number;
-  /** Initial JPEG quality 0–1. */
+  /** Initial WebP quality 0-1. */
   initialQuality: number;
-  /** Minimum JPEG quality before giving up. */
+  /** Minimum WebP quality before giving up. */
   minQuality: number;
 }
 
@@ -19,8 +19,15 @@ export interface CompressImageResult {
   height: number;
 }
 
-/** Presets tuned for DB storage — cover thumbnails on trip cards. */
+/** Presets tuned for DB storage: client uploads are resized and encoded as WebP. */
 export const IMAGE_PRESETS = {
+  avatar: {
+    maxWidth: 256,
+    maxHeight: 256,
+    maxBytes: 36_000,
+    initialQuality: 0.7,
+    minQuality: 0.36,
+  },
   tripCover: {
     maxWidth: 640,
     maxHeight: 360,
@@ -31,6 +38,7 @@ export const IMAGE_PRESETS = {
 } as const satisfies Record<string, CompressImageOptions>;
 
 const DATA_URL_RE = /^data:image\/[a-zA-Z+]+;base64,/;
+const OUTPUT_MIME_TYPE = "image/webp";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -68,6 +76,14 @@ function estimateBytesFromDataUrl(dataUrl: string): number {
   return Math.round((base64.length * 3) / 4);
 }
 
+function encodeCanvasAsWebp(canvas: HTMLCanvasElement, quality: number): string {
+  const output = canvas.toDataURL(OUTPUT_MIME_TYPE, quality);
+  if (!output.startsWith(`data:${OUTPUT_MIME_TYPE};base64,`)) {
+    throw new Error("Trình duyệt không hỗ trợ tối ưu ảnh WebP.");
+  }
+  return output;
+}
+
 async function compressDataUrl(
   dataUrl: string,
   options: CompressImageOptions,
@@ -85,11 +101,11 @@ async function compressDataUrl(
   ctx.drawImage(img, 0, 0, width, height);
 
   let quality = options.initialQuality;
-  let output = canvas.toDataURL("image/jpeg", quality);
+  let output = encodeCanvasAsWebp(canvas, quality);
 
   while (estimateBytesFromDataUrl(output) > options.maxBytes && quality > options.minQuality) {
     quality = Math.max(options.minQuality, quality - 0.08);
-    output = canvas.toDataURL("image/jpeg", quality);
+    output = encodeCanvasAsWebp(canvas, quality);
   }
 
   // Last resort: shrink dimensions further
@@ -98,7 +114,7 @@ async function compressDataUrl(
     canvas.width = smaller.width;
     canvas.height = smaller.height;
     ctx.drawImage(img, 0, 0, smaller.width, smaller.height);
-    output = canvas.toDataURL("image/jpeg", options.minQuality);
+    output = encodeCanvasAsWebp(canvas, options.minQuality);
   }
 
   const compressedBytes = estimateBytesFromDataUrl(output);
@@ -115,7 +131,7 @@ async function compressDataUrl(
   };
 }
 
-/** Compress an image file for upload (resize + JPEG re-encode). */
+/** Compress an image file for upload (resize + WebP re-encode). */
 export async function compressImageFile(
   file: File,
   options: CompressImageOptions = IMAGE_PRESETS.tripCover,

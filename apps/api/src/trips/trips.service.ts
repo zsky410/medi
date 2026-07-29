@@ -54,6 +54,7 @@ export class TripsService {
       startDate: isoDate(trip.startDate),
       endDate: isoDate(trip.endDate),
       visibility: trip.visibility,
+      distributionMode: trip.distributionMode,
       inviteCode: canInvite ? trip.inviteCode : null,
       cloneCount: trip.cloneCount,
       budgetAmount: trip.budgetAmount,
@@ -175,6 +176,11 @@ export class TripsService {
           include: { places: { orderBy: { order: "asc" } } },
         },
         places: { where: { dayId: null }, orderBy: { order: "asc" } },
+        guides: {
+          where: { published: true },
+          select: { id: true, price: true, currency: true },
+          take: 1,
+        },
       },
     });
     if (!trip || trip.visibility === "PRIVATE") {
@@ -191,6 +197,10 @@ export class TripsService {
       memberCount: trip._count.members,
       placeCount: trip._count.places,
       cloneCount: trip.cloneCount,
+      distributionMode: trip.distributionMode,
+      guideId: trip.guides[0]?.id,
+      guidePrice: trip.guides[0]?.price,
+      guideCurrency: trip.guides[0]?.currency,
       days: trip.days.map((d) => ({
         id: d.id,
         tripId: d.tripId,
@@ -203,7 +213,11 @@ export class TripsService {
   }
 
   /** Remix: copy a shared trip (days, places, checklist) into the user's account. */
-  async clone(tripId: string, userId: string): Promise<TripDto> {
+  async clone(
+    tripId: string,
+    userId: string,
+    options: { allowShopSource?: boolean } = {},
+  ): Promise<TripDto> {
     const source = await this.prisma.trip.findUnique({
       where: { id: tripId },
       include: {
@@ -217,6 +231,9 @@ export class TripsService {
     const isMember = source.members.some((m) => m.userId === userId);
     if (source.visibility === "PRIVATE" && !isMember) {
       throw new NotFoundException("Lịch trình này không được chia sẻ công khai");
+    }
+    if (!options.allowShopSource && !isMember && source.distributionMode !== "EXPLORE_FREE") {
+      throw new BadRequestException("Guide này đang được phân phối qua Creator Shop. Hãy lấy guide trong Shop.");
     }
 
     const created = await this.prisma.trip.create({
@@ -278,6 +295,7 @@ export class TripsService {
   async listPublic(query: ListPublicTripsQuery): Promise<PublicTripsListDto> {
     const where = {
       visibility: "PUBLIC" as const,
+      distributionMode: "EXPLORE_FREE" as const,
       ...(query.destination
         ? { destination: { contains: query.destination, mode: "insensitive" as const } }
         : {}),
@@ -308,6 +326,7 @@ export class TripsService {
       memberCount: t._count.members,
       placeCount: t._count.places,
       cloneCount: t.cloneCount,
+      distributionMode: t.distributionMode,
       dayCount: t._count.days,
     }));
 

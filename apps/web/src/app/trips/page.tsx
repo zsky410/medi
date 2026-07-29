@@ -14,16 +14,7 @@ import { LocationSelect } from "@/components/location-select";
 import { DateInput } from "@/components/date-input";
 import { UploadCloud, Trash2, Backpack, Camera } from "lucide-react";
 import { compressImageFile, IMAGE_PRESETS } from "@/lib/compress-image";
-
-// Playful preset covers
-const PRESET_COVERS = [
-  "https://images.unsplash.com/photo-1583249890652-f10151567757?auto=format&fit=crop&w=500&q=80", // Da Lat
-  "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=500&q=80", // Hoi An
-  "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?auto=format&fit=crop&w=500&q=80", // Nha Trang
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=500&q=80", // Beach
-  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=500&q=80", // Mountain
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=500&q=80", // Lake
-];
+import { canDeleteTrip, tripDeletePath } from "@/lib/trip-actions";
 
 function NewTripModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
@@ -205,13 +196,22 @@ function NewTripModal({ open, onClose }: { open: boolean; onClose: () => void })
   );
 }
 
-function TripCard({ trip, index }: { trip: TripDto; index: number }) {
+function TripCard({
+  trip,
+  index,
+  canDelete,
+  isDeleting,
+  onDelete,
+}: {
+  trip: TripDto;
+  index: number;
+  canDelete: boolean;
+  isDeleting: boolean;
+  onDelete: (trip: TripDto) => void;
+}) {
   // Generate a random rotation between -2 and 2 degrees based on the index
   const rotations = ["-rotate-2", "rotate-1", "-rotate-1", "rotate-2", "-rotate-1.5", "rotate-1.5"];
   const rotation = rotations[index % rotations.length];
-
-  // Pick a cover image based on index
-  const cover = trip.coverImage ?? PRESET_COVERS[index % PRESET_COVERS.length];
 
   const diffDays = daysUntil(trip.startDate);
   const isUpcoming = diffDays > 0;
@@ -222,6 +222,22 @@ function TripCard({ trip, index }: { trip: TripDto; index: number }) {
         {/* Washi tape sticker on top corner */}
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-20 h-5 bg-[#FFE1CF]/80 border-b border-[#F3E3D3] rotate-1 z-10" />
 
+        {canDelete && (
+          <button
+            type="button"
+            aria-label={`Xóa ${trip.title}`}
+            disabled={isDeleting}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(trip);
+            }}
+            className="absolute left-5 top-5 z-20 inline-flex size-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-red-500 opacity-0 shadow-md backdrop-blur transition-all hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 group-hover:opacity-100 focus:opacity-100"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
+
         {/* Countdown Sticker */}
         {isUpcoming && (
           <div className="absolute top-5 right-5 bg-gradient-to-r from-brand-500 to-[#FF3D77] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full shadow-md z-10 animate-pulse">
@@ -231,10 +247,18 @@ function TripCard({ trip, index }: { trip: TripDto; index: number }) {
 
         {/* Polaroid Photo Frame */}
         <div className="aspect-[4/3] bg-stone-100 rounded-xl overflow-hidden mb-4 relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover} alt={trip.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-          <h3 className="absolute bottom-3 inset-x-3 text-base font-display font-extrabold text-white drop-shadow">
+          {trip.coverImage ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={trip.coverImage} alt={trip.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+            </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-[#FFF3EB] px-6 text-center">
+              <span className="text-xs font-extrabold text-[#8A7563]">Chưa có ảnh bìa</span>
+            </div>
+          )}
+          <h3 className={`absolute bottom-3 inset-x-3 text-base font-display font-extrabold drop-shadow ${trip.coverImage ? "text-white" : "text-[#2B2118]"}`}>
             {trip.title}
           </h3>
         </div>
@@ -276,10 +300,23 @@ function TripsContent() {
   const { user } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [filter, setFilter] = useState("all"); // all, upcoming, past
+  const queryClient = useQueryClient();
   const { data: trips, isLoading } = useQuery({
     queryKey: ["trips"],
     queryFn: () => api<TripDto[]>("/trips"),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (tripId: string) => api<{ ok: true }>(tripDeletePath(tripId), { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trips"] }),
+  });
+
+  function handleDeleteTrip(trip: TripDto) {
+    if (!canDeleteTrip(trip, user)) return;
+    const confirmed = window.confirm(`Xóa vĩnh viễn "${trip.title}"? Lịch trình, địa điểm, checklist và chi phí liên quan sẽ bị xóa.`);
+    if (!confirmed) return;
+    deleteMutation.mutate(trip.id);
+  }
 
   const filteredTrips = trips?.filter((trip) => {
     if (filter === "all") return true;
@@ -346,7 +383,14 @@ function TripsContent() {
         ) : filteredTrips && filteredTrips.length > 0 ? (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {filteredTrips.map((trip, idx) => (
-              <TripCard key={trip.id} trip={trip} index={idx} />
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                index={idx}
+                canDelete={canDeleteTrip(trip, user)}
+                isDeleting={deleteMutation.isPending && deleteMutation.variables === trip.id}
+                onDelete={handleDeleteTrip}
+              />
             ))}
           </div>
         ) : (

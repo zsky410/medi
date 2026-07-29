@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { SubscriptionDto, UpdateProfileInput, UserDto } from "@medi/types";
@@ -10,6 +10,8 @@ import { useAuth } from "@/lib/auth";
 import { AppHeader } from "@/components/app-header";
 import { RequireAuth } from "@/components/require-auth";
 import { Avatar, Button, Card, ErrorText, Input, Label, Spinner } from "@/components/ui";
+import { compressImageFile, formatBytes, IMAGE_PRESETS } from "@/lib/compress-image";
+import { Camera, Trash2 } from "lucide-react";
 
 function SettingsContent() {
   const { user, refreshUser } = useAuth();
@@ -17,6 +19,9 @@ function SettingsContent() {
   const [name, setName] = useState(user?.name ?? "");
   const [defaultCurrency, setDefaultCurrency] = useState(user?.defaultCurrency ?? "VND");
   const [profileError, setProfileError] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatarUrl ?? null);
+  const [avatarInputKey, setAvatarInputKey] = useState(0);
+  const [avatarMeta, setAvatarMeta] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -31,6 +36,10 @@ function SettingsContent() {
     if (searchParams.get("downgraded") === "1") void refreshUser();
   }, [searchParams, refreshUser]);
 
+  useEffect(() => {
+    setAvatarPreview(user?.avatarUrl ?? null);
+  }, [user?.avatarUrl]);
+
   const profileMutation = useMutation({
     mutationFn: (input: UpdateProfileInput) =>
       api<UserDto>("/auth/me", { method: "PATCH", body: JSON.stringify(input) }),
@@ -38,7 +47,17 @@ function SettingsContent() {
       await refreshUser();
       setProfileError("");
     },
-    onError: (err) => setProfileError(err instanceof ApiError ? err.message : "Không lưu được"),
+    onError: (err) => setProfileError(getProfileErrorMessage(err, "Không lưu được")),
+  });
+
+  const avatarMutation = useMutation({
+    mutationFn: (input: Pick<UpdateProfileInput, "avatarUrl">) =>
+      api<UserDto>("/auth/me", { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: async () => {
+      await refreshUser();
+      setProfileError("");
+    },
+    onError: (err) => setProfileError(getProfileErrorMessage(err, "Không cập nhật được ảnh đại diện")),
   });
 
   const passwordMutation = useMutation({
@@ -65,6 +84,48 @@ function SettingsContent() {
     profileMutation.mutate({ name, defaultCurrency });
   }
 
+  async function onAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    if (!user) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      setProfileError("Ảnh quá lớn. Vui lòng chọn file dưới 8MB.");
+      setAvatarInputKey((k) => k + 1);
+      return;
+    }
+
+    const previousAvatar = user.avatarUrl;
+    try {
+      setProfileError("");
+      setAvatarMeta("");
+      const result = await compressImageFile(file, IMAGE_PRESETS.avatar);
+      setAvatarPreview(result.dataUrl);
+      setAvatarMeta(`${result.width}x${result.height} · ${formatBytes(result.compressedBytes)}`);
+      await avatarMutation.mutateAsync({ avatarUrl: result.dataUrl });
+    } catch (err) {
+      setAvatarPreview(previousAvatar ?? null);
+      setAvatarMeta("");
+      setProfileError(getProfileErrorMessage(err, "Không cập nhật được ảnh đại diện"));
+    } finally {
+      setAvatarInputKey((k) => k + 1);
+    }
+  }
+
+  async function onAvatarRemove() {
+    if (!user) return;
+    const previousAvatar = user.avatarUrl;
+    try {
+      setProfileError("");
+      setAvatarPreview(null);
+      setAvatarMeta("");
+      await avatarMutation.mutateAsync({ avatarUrl: null });
+    } catch (err) {
+      setAvatarPreview(previousAvatar ?? null);
+      setProfileError(getProfileErrorMessage(err, "Không xoá được ảnh đại diện"));
+    }
+  }
+
   function onPasswordSubmit(e: FormEvent) {
     e.preventDefault();
     passwordMutation.mutate({ currentPassword, newPassword });
@@ -82,16 +143,48 @@ function SettingsContent() {
         </div>
 
         <Card className="p-6 border-2 border-[#F3E3D3] bg-white space-y-4">
-          <div className="flex items-center gap-3">
-            <Avatar name={user.name} avatarUrl={user.avatarUrl} size={48} />
-            <div>
-              <p className="font-display font-extrabold text-[#2B2118]">{user.name}</p>
-              <p className="text-xs font-semibold text-[#8A7563]">{user.email}</p>
-              {user.plan === "PRO" && (
-                <span className="inline-block mt-1 rounded-full bg-gradient-to-r from-brand-500 to-[#FF3D77] px-2 py-0.5 text-[10px] font-extrabold text-white">
-                  PRO ✨
-                </span>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar name={user.name} avatarUrl={avatarPreview} size={64} />
+              <div>
+                <p className="font-display font-extrabold text-[#2B2118]">{user.name}</p>
+                <p className="text-xs font-semibold text-[#8A7563]">{user.email}</p>
+                {user.plan === "PRO" && (
+                  <span className="inline-block mt-1 rounded-full bg-gradient-to-r from-brand-500 to-[#FF3D77] px-2 py-0.5 text-[10px] font-extrabold text-white">
+                    PRO ✨
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <input
+                key={avatarInputKey}
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onAvatarChange}
+                disabled={avatarMutation.isPending}
+              />
+              <label
+                htmlFor="avatar-upload"
+                className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full bg-[#FFF3EB] px-4 py-2 text-sm font-bold text-[#2B2118] ring-1 ring-[#F3E3D3] transition-all hover:bg-[#FFE1CF]"
+              >
+                <Camera size={16} />
+                {avatarMutation.isPending ? "Đang tải..." : "Đổi ảnh"}
+              </label>
+              {avatarPreview && (
+                <button
+                  type="button"
+                  onClick={onAvatarRemove}
+                  disabled={avatarMutation.isPending}
+                  className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-bold text-red-500 ring-1 ring-red-100 transition-all hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 size={16} />
+                  Xoá
+                </button>
               )}
+              {avatarMeta && <p className="basis-full text-right text-[10px] font-semibold text-[#8A7563]">{avatarMeta}</p>}
             </div>
           </div>
 
@@ -172,6 +265,14 @@ function SettingsContent() {
       </main>
     </div>
   );
+}
+
+function getProfileErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status >= 500) return `${fallback}. API đang lỗi, thử lại sau khi server reload.`;
+    return err.message;
+  }
+  return err instanceof Error ? err.message : fallback;
 }
 
 export default function SettingsPage() {

@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
-import { Button } from "@/components/ui";
-import { ArrowRight, MapPinned, Users2, Wallet, ClipboardCheck, Plane, Calendar } from "lucide-react";
+import { PublicTripGrid } from "@/components/public-trip-grid";
+import { Button, Spinner } from "@/components/ui";
+import { fetchPublicTrips } from "@/lib/public-trips";
+import { ArrowRight, MapPinned, Users2, Wallet, ClipboardCheck } from "lucide-react";
 
 const DAY_COLORS = ["#FF6B2C", "#FF3D77", "#8B5CF6", "#0EA5E9", "#84CC16", "#FFC93C"];
 
@@ -94,17 +97,12 @@ const STEPS = [
   { n: 3, color: "#8B5CF6", title: "Chốt kèo, lên đường!", desc: "Xuất Google Maps, checklist đồ đạc xong là sẵn sàng bay thôi" },
 ];
 
-// ── BOARDING PASS SHOWCASE ────────────────────────────────────────────────────
-const ITINERARIES = [
-  { code: "DLI", dest: "Đà Lạt", duration: "3N2Đ", dates: "14/08/2026 – 16/08/2026", author: "Trang M.", img: UNSPLASH.dalat2, color: "#FF6B2C", stolen: 128 },
-  { code: "DAN", dest: "Đà Nẵng–Hội An", duration: "4N3Đ", dates: "22/09/2026 – 25/09/2026", author: "Minh K.", img: UNSPLASH.danang, color: "#FF3D77", stolen: 86 },
-  { code: "HAN", dest: "Hà Giang", duration: "5N4Đ", dates: "05/10/2026 – 09/10/2026", author: "Linh T.", img: UNSPLASH.hagiang, color: "#8B5CF6", stolen: 214 },
-  { code: "PQC", dest: "Phú Quốc", duration: "3N2Đ", dates: "30/11/2026 – 02/12/2026", author: "Nam B.", img: UNSPLASH.phuquoc, color: "#0EA5E9", stolen: 97 },
-  { code: "SGN", dest: "Sài Gòn ẩm thực", duration: "2N1Đ", dates: "Cuối tuần", author: "Hà P.", img: UNSPLASH.food, color: "#84CC16", stolen: 163 },
-];
-
 export default function LandingPage() {
-  const tickerText = "🧳 12.000+ hội bạn đã chốt kèo cùng Mê Đi · 45.000 lịch trình đã tạo · ✈️ 128 điểm đến phổ biến · 🔥 Hoàn toàn miễn phí · ";
+  const { data: publicTrips, isError, isLoading } = useQuery({
+    queryKey: ["public-trips", "landing"],
+    queryFn: () => fetchPublicTrips({ limit: 4 }),
+  });
+  const tickerText = "🧳 Cùng hội bạn chốt lịch trình · 🗺️ Gom địa điểm vào một bản đồ · 💸 Chia tiền rõ ràng · 🔥 Chia sẻ kèo miễn phí · ";
   const repeatedTicker = tickerText.repeat(6);
 
   return (
@@ -155,7 +153,7 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <p className="text-[#8A7563] text-sm font-bold">
-                  <span className="text-[#2B2118] font-extrabold">12.000+</span> hội bạn đang lên kèo
+                  Lên kèo cùng bạn bè, không cần gom tin nhắn thủ công
                 </p>
               </div>
             </div>
@@ -318,13 +316,13 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Boarding Pass Showcase */}
+        {/* Free Public Trip Showcase */}
         <section className="py-16 md:py-24 text-left">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-[#2B2118] mb-2">Kèo hay từ hội bạn</h2>
-                <p className="text-[#8A7563] font-bold">Thấy kèo ngon — chôm về sửa tên, chốt ngay!</p>
+                <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-[#2B2118] mb-2">Kèo hay từ mọi người</h2>
+                <p className="text-[#8A7563] font-bold">Các lịch trình được chia sẻ miễn phí — chôm về sửa tên, chốt ngay!</p>
               </div>
               <Link href="/explore">
                 <Button variant="secondary" className="hidden sm:flex items-center gap-2 text-xs">
@@ -332,59 +330,20 @@ export default function LandingPage() {
                 </Button>
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 justify-items-center">
-              {ITINERARIES.slice(0, 4).map((item, i) => (
-              <div
-                key={i}
-                className="boarding-card w-full max-w-72 cursor-pointer group hover:shadow-2xl transition-all duration-300"
-              >
-                <div className="relative h-36 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.img} alt={item.dest} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                  <div className="absolute bottom-3 left-3">
-                    <span className="text-white text-2xl font-display font-extrabold tracking-wider">{item.code}</span>
-                    <span className="text-white/70 text-sm ml-2 font-bold">{item.duration}</span>
-                  </div>
-                  <div className="absolute top-3 right-3">
-                    <div className="inline-flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-extrabold text-[#2B2118] shadow-sm border border-white/50">
-                      <Plane size={11} className="text-[#FF6B2C] fill-[#FF6B2C] rotate-45" />
-                      <span>{item.duration}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 bg-white">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-display font-extrabold text-[#2B2118] leading-tight">{item.dest}</h3>
-                      <p className="text-[#8A7563] text-xs font-semibold mt-0.5 flex items-center gap-1">
-                        <Calendar size={13} className="text-[#FF6B2C] shrink-0" />
-                        <span>{item.dates}</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 text-[#8A7563] text-xs font-bold">
-                      <span className="text-[#FF6B2C] font-extrabold">{item.stolen}</span>
-                      <span>chôm</span>
-                    </div>
-                  </div>
-                  <div className="perforated pt-3 mt-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold shadow-sm"
-                        style={{ background: item.color }}
-                      >
-                        {item.author[0]}
-                      </div>
-                      <span className="text-xs font-bold text-[#8A7563]">{item.author}</span>
-                    </div>
-                    <Link href="/login" className="text-xs font-bold text-[#FF6B2C] hover:text-[#E8551A] hover:underline">
-                      Chôm về →
-                    </Link>
-                  </div>
-                </div>
+            {isLoading ? (
+              <div className="flex justify-center py-16">
+                <Spinner className="size-10" />
               </div>
-            ))}
-            </div>
+            ) : isError ? (
+              <p className="py-16 text-center font-bold text-[#8A7563]">Không tải được kèo công khai. Thử lại sau nhé!</p>
+            ) : publicTrips?.items.length ? (
+              <PublicTripGrid trips={publicTrips.items} columns="four" />
+            ) : (
+              <div className="rounded-2xl border-2 border-dashed border-[#F3E3D3] bg-white/70 px-6 py-12 text-center">
+                <p className="font-display text-xl font-extrabold text-[#2B2118]">Chưa có kèo miễn phí nào được chia sẻ.</p>
+                <p className="mt-2 text-sm font-bold text-[#8A7563]">Hãy tạo một chuyến đi, bật Công khai, rồi kèo của bạn sẽ xuất hiện ở đây.</p>
+              </div>
+            )}
           </div>
         </section>
 

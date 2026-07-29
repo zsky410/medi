@@ -23,6 +23,7 @@ export interface GuideListItemDto {
   description: string | null;
   price: number;
   currency: string;
+  published: boolean;
   destination: string;
   coverImage: string | null;
   dayCount: number;

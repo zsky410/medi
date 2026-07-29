@@ -23,6 +23,12 @@ enum TripVisibility {
   PUBLIC
 }
 
+enum TripDistributionMode {
+  EXPLORE_FREE
+  SHOP_FREE
+  SHOP_PAID
+}
+
 enum TripRole {
   OWNER
   EDITOR
@@ -91,6 +97,7 @@ model Trip {
   startDate   DateTime       @db.Date
   endDate     DateTime       @db.Date
   visibility     TripVisibility @default(PRIVATE)
+  distributionMode TripDistributionMode @default(EXPLORE_FREE)
   inviteCode     String?        @unique
   cloneCount     Int            @default(0)
   budgetAmount   Float?

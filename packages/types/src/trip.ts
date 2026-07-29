@@ -3,6 +3,7 @@ import type { UserDto } from "./auth";
 import type { DayDto, PlaceDto } from "./place";
 
 export type TripVisibility = "PRIVATE" | "LINK" | "PUBLIC";
+export type TripDistributionMode = "EXPLORE_FREE" | "SHOP_FREE" | "SHOP_PAID";
 export type TripRole = "OWNER" | "EDITOR" | "VIEWER";
 
 export const createTripSchema = z.object({
@@ -41,6 +42,7 @@ export interface TripDto {
   startDate: string;
   endDate: string;
   visibility: TripVisibility;
+  distributionMode: TripDistributionMode;
   inviteCode: string | null;
   cloneCount: number;
   budgetAmount: number | null;
@@ -68,6 +70,10 @@ export interface PublicTripDto {
   memberCount: number;
   placeCount: number;
   cloneCount: number;
+  distributionMode: TripDistributionMode;
+  guideId?: string;
+  guidePrice?: number;
+  guideCurrency?: string;
   days: DayDto[];
   savedPlaces: PlaceDto[];
 }
@@ -84,6 +90,7 @@ export interface PublicTripListItemDto {
   memberCount: number;
   placeCount: number;
   cloneCount: number;
+  distributionMode: TripDistributionMode;
   dayCount: number;
 }
 

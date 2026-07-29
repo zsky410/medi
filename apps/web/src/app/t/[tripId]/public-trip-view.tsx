@@ -21,22 +21,23 @@ const TripMap = dynamic(() => import("@/components/trip/trip-map").then((m) => m
   ),
 });
 
-function RemixButton({ tripId }: { tripId: string }) {
+function RemixButton({ trip }: { trip: PublicTripDto }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [cloning, setCloning] = useState(false);
   const [error, setError] = useState("");
+  const isShopTrip = trip.distributionMode !== "EXPLORE_FREE";
 
   async function remix() {
     if (!user) {
-      router.push(`/login?next=${encodeURIComponent(`/t/${tripId}`)}`);
+      router.push(`/login?next=${encodeURIComponent(`/t/${trip.id}`)}`);
       return;
     }
     setCloning(true);
     setError("");
     try {
-      const trip = await api<TripDto>(`/trips/${tripId}/clone`, { method: "POST" });
-      router.push(`/trips/${trip.id}`);
+      const cloned = await api<TripDto>(`/trips/${trip.id}/clone`, { method: "POST" });
+      router.push(`/trips/${cloned.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không sao chép được lịch trình");
       setCloning(false);
@@ -45,16 +46,26 @@ function RemixButton({ tripId }: { tripId: string }) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <Button
-        onClick={remix}
-        disabled={cloning || loading}
-        className="px-8 py-4 text-base bg-gradient-to-r from-brand-500 to-[#FF3D77] text-white hover:from-brand-600 hover:to-[#E8356C] border-none shadow-lg shadow-brand-500/20 hover:scale-105 transition-transform"
-      >
-        {cloning ? "Đang chôm kèo..." : "Chôm kèo này về sửa 😎"}
-      </Button>
-      {!user && !loading && (
-        <p className="text-xs font-bold text-white/80">Miễn phí, đăng nhập là xong!</p>
+      {isShopTrip && trip.guideId ? (
+        <Link
+          href={`/shop/${trip.guideId}`}
+          className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-base font-extrabold text-[#2B2118] shadow-lg shadow-black/10 transition-transform hover:scale-105"
+        >
+          {trip.guidePrice && trip.guidePrice > 0
+            ? `Mua guide ${formatMoney(trip.guidePrice, trip.guideCurrency)}`
+            : "Lấy guide miễn phí trong Shop"}
+        </Link>
+      ) : (
+        <Button
+          onClick={remix}
+          disabled={cloning || loading}
+          className="px-8 py-4 text-base bg-gradient-to-r from-brand-500 to-[#FF3D77] text-white hover:from-brand-600 hover:to-[#E8356C] border-none shadow-lg shadow-brand-500/20 hover:scale-105 transition-transform"
+        >
+          {cloning ? "Đang chôm kèo..." : "Chôm kèo này về sửa 😎"}
+        </Button>
       )}
+      {!user && !loading && !isShopTrip && <p className="text-xs font-bold text-white/80">Miễn phí, đăng nhập là xong!</p>}
+      {isShopTrip && <p className="text-xs font-bold text-white/80">Plan này đã chuyển sang Creator Shop.</p>}
       {error && <p className="text-xs font-bold text-red-200 bg-red-500/20 px-3 py-1 rounded-full">{error}</p>}
     </div>
   );
@@ -108,7 +119,7 @@ export function PublicTripView({ trip }: { trip: PublicTripDto }) {
             </span>
           </div>
           <div className="mt-6 flex justify-center pt-2">
-            <RemixButton tripId={trip.id} />
+            <RemixButton trip={trip} />
           </div>
         </div>
       </div>

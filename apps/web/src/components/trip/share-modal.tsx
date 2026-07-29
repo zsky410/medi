@@ -8,8 +8,8 @@ import { Button, Modal } from "@/components/ui";
 
 const OPTIONS: { value: TripVisibility; label: string; desc: string }[] = [
   { value: "PRIVATE", label: "Riêng tư", desc: "Chỉ thành viên chuyến đi xem được" },
-  { value: "LINK", label: "Ai có link", desc: "Bất kỳ ai có link đều xem được (không hiện công khai)" },
-  { value: "PUBLIC", label: "Công khai", desc: "Mọi người xem được và sao chép lịch trình của bạn" },
+  { value: "LINK", label: "Ai có link", desc: "Bất kỳ ai có link đều xem và chôm miễn phí (không hiện trên web)" },
+  { value: "PUBLIC", label: "Chia sẻ miễn phí", desc: "Hiển thị ở trang chủ và Khám phá để mọi người chôm miễn phí" },
 ];
 
 export function ShareModal({
@@ -67,7 +67,7 @@ export function ShareModal({
 
         {trip.visibility !== "PRIVATE" && (
           <div>
-            <p className="mb-1 text-sm font-medium text-stone-700">Link chia sẻ công khai</p>
+            <p className="mb-1 text-sm font-medium text-stone-700">Link chia sẻ</p>
             <div className="flex items-center gap-2 rounded-lg bg-stone-100 p-2">
               <span className="min-w-0 flex-1 truncate text-xs text-stone-600">{publicUrl}</span>
               <Button variant="secondary" onClick={copyLink} className="shrink-0 px-3 py-1 text-xs">
@@ -75,7 +75,7 @@ export function ShareModal({
               </Button>
             </div>
             <p className="mt-2 text-xs text-stone-400">
-              Người xem có thể sao chép lịch trình này về tài khoản của họ — một cách hay để chia sẻ kinh nghiệm du lịch của bạn.
+              Chia sẻ miễn phí sẽ đưa lịch trình lên trang chủ và Khám phá. Nếu muốn bán plan/guide, hãy đăng chuyến đi trong Creator Shop.
             </p>
           </div>
         )}

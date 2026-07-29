@@ -14,15 +14,15 @@ export const COVER_IMAGE_PRESET: ServerCompressOptions = {
   maxWidth: 640,
   maxHeight: 360,
   maxBytes: 120_000,
-  initialQuality: 72,
-  minQuality: 42,
+  initialQuality: 74,
+  minQuality: 44,
 };
 
 function isDataUrlImage(value: string): boolean {
   return value.startsWith("data:image/");
 }
 
-/** Resize & re-encode uploaded cover images before persisting to the database. */
+/** Resize & re-encode uploaded cover images as WebP before persisting to the database. */
 export async function compressCoverImageDataUrl(
   input: string | null | undefined,
   options: ServerCompressOptions = COVER_IMAGE_PRESET,
@@ -39,7 +39,7 @@ export async function compressCoverImageDataUrl(
     return sharp(source)
       .rotate()
       .resize({ width, height, fit: "cover", withoutEnlargement: true })
-      .jpeg({ quality, mozjpeg: true })
+      .webp({ quality })
       .toBuffer();
   }
 
@@ -59,5 +59,5 @@ export async function compressCoverImageDataUrl(
     );
   }
 
-  return `data:image/jpeg;base64,${result.toString("base64")}`;
+  return `data:image/webp;base64,${result.toString("base64")}`;
 }

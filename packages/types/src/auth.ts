@@ -30,7 +30,12 @@ export interface UserDto {
 
 export const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  avatarUrl: z.string().url().nullish(),
+  avatarUrl: z
+    .union([
+      z.string().url().regex(/^https?:\/\//, "Ảnh đại diện phải là URL http(s)"),
+      z.string().regex(/^data:image\/[a-zA-Z+]+;base64,/, "Ảnh đại diện không hợp lệ"),
+    ])
+    .nullish(),
   defaultCurrency: z.string().length(3).optional(),
   locale: z.string().min(2).max(10).optional(),
 });

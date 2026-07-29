@@ -1,34 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import type { PublicTripsListDto } from "@medi/types";
-import { API_URL } from "@/lib/api";
 import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
 import { Spinner } from "@/components/ui";
 import { LocationSelect, destinationFilterTerm } from "@/components/location-select";
-import { MapPin, Plane } from "lucide-react";
-
-const FALLBACK_COVER = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&h=300&fit=crop&auto=format";
-const CARD_COLORS = ["#FF6B2C", "#FF3D77", "#8B5CF6", "#0EA5E9", "#84CC16", "#FFC93C"];
+import { PublicTripGrid } from "@/components/public-trip-grid";
+import { fetchPublicTrips } from "@/lib/public-trips";
+import { MapPin } from "lucide-react";
 
 const DURATIONS = ["2-3 ngày", "4-5 ngày", "1 tuần+"];
-
-function durationLabel(startDate: string, endDate: string): string {
-  const days = Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000) + 1;
-  const nights = Math.max(days - 1, 0);
-  return `${nights}N${days}Đ`;
-}
-
-async function fetchPublicTrips(destination?: string): Promise<PublicTripsListDto> {
-  const params = new URLSearchParams({ sort: "cloneCount", limit: "24" });
-  if (destination) params.set("destination", destination);
-  const res = await fetch(`${API_URL}/public/trips?${params}`);
-  if (!res.ok) throw new Error("Không tải được danh sách kèo");
-  return res.json();
-}
 
 export default function ExplorePage() {
   const [search, setSearch] = useState("");
@@ -38,7 +20,7 @@ export default function ExplorePage() {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["public-trips", destinationQuery],
-    queryFn: () => fetchPublicTrips(destinationQuery),
+    queryFn: () => fetchPublicTrips({ destination: destinationQuery, limit: 24 }),
   });
 
   const filtered = useMemo(() => {
@@ -95,56 +77,7 @@ export default function ExplorePage() {
         ) : filtered.length === 0 ? (
           <p className="text-center text-[#8A7563] font-bold py-20">Chưa có kèo công khai nào. Hãy chia sẻ chuyến đi của bạn trước nhé!</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {filtered.map((c, i) => {
-              const color = CARD_COLORS[i % CARD_COLORS.length];
-              const dur = durationLabel(c.startDate, c.endDate);
-              return (
-                <Link
-                  key={c.id}
-                  href={`/t/${c.id}`}
-                  className="boarding-card group cursor-pointer hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
-                >
-                  <div className="relative overflow-hidden h-48">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={c.coverImage ?? FALLBACK_COVER}
-                      alt={c.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute bottom-3 left-3 right-3">
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className="text-white font-display font-extrabold text-xl">{c.destination.split(",")[0]}</p>
-                          <p className="text-white/70 text-xs font-semibold">{c.title} · {dur}</p>
-                        </div>
-                        <div className="inline-flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-extrabold text-[#2B2118] shadow-sm border border-white/50">
-                          <Plane size={11} className="text-[#FF6B2C] fill-[#FF6B2C] rotate-45" />
-                          <span>{dur}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 flex items-center justify-between bg-white">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold shadow-sm"
-                        style={{ background: color }}
-                      >
-                        {c.ownerName[0]}
-                      </div>
-                      <span className="text-xs font-bold text-[#8A7563]">{c.ownerName}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs font-bold text-[#8A7563]">
-                      <span>📍 {c.placeCount} chỗ</span>
-                      <span className="text-[#FF6B2C] font-extrabold">{c.cloneCount} chôm</span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          <PublicTripGrid trips={filtered} />
         )}
       </main>
       <Footer />

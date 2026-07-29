@@ -23,6 +23,10 @@ export class ShopService {
     private readonly trips: TripsService,
   ) {}
 
+  private guideDistributionMode(price?: number | null): "SHOP_FREE" | "SHOP_PAID" {
+    return (price ?? 0) > 0 ? "SHOP_PAID" : "SHOP_FREE";
+  }
+
   private toListItem(
     guide: {
       id: string;
@@ -30,6 +34,7 @@ export class ShopService {
       description: string | null;
       price: number;
       currency: string;
+      published: boolean;
       purchaseCount: number;
       createdAt: Date;
       creator: { id: string; name: string };
@@ -46,6 +51,7 @@ export class ShopService {
       description: guide.description,
       price: guide.price,
       currency: guide.currency,
+      published: guide.published,
       destination: guide.trip.destination,
       coverImage: guide.trip.coverImage,
       dayCount: guide.trip._count.days,
@@ -170,6 +176,11 @@ export class ShopService {
       },
     });
 
+    await this.prisma.trip.update({
+      where: { id: input.tripId },
+      data: { distributionMode: this.guideDistributionMode(input.price) },
+    });
+
     return {
       ...this.toListItem(guide),
       tripId: guide.trip.id,
@@ -205,6 +216,18 @@ export class ShopService {
       },
     });
 
+    if (input.price !== undefined || input.published !== undefined) {
+      await this.prisma.trip.update({
+        where: { id: guide.tripId },
+        data: {
+          distributionMode:
+            input.published === false
+              ? "EXPLORE_FREE"
+              : this.guideDistributionMode(input.price ?? guide.price),
+        },
+      });
+    }
+
     return {
       ...this.toListItem(updated),
       tripId: updated.trip.id,
@@ -231,7 +254,7 @@ export class ShopService {
     }
 
     // MVP: mock purchase — no real payment for paid guides yet
-    const cloned = await this.trips.clone(guide.tripId, userId);
+    const cloned = await this.trips.clone(guide.tripId, userId, { allowShopSource: true });
 
     await this.prisma.guidePurchase.upsert({
       where: { guideId_buyerId: { guideId, buyerId: userId } },
