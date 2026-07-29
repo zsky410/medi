@@ -90,6 +90,7 @@ export class GeoService {
   private readonly geocodeCache = new Map<string, CacheEntry<GeoPoint | null>>();
   /** Encoded overview polyline per ordered point list. */
   private readonly pathCache = new Map<string, CacheEntry<string | null>>();
+  private readonly inFlight = new Map<string, Promise<unknown>>();
 
   constructor(private readonly config: ConfigService) {
     const provider = this.config.get<string>("GEO_PROVIDER") ?? "nominatim";
@@ -156,40 +157,95 @@ export class GeoService {
     }
     if (missingRows.length === 0) return matrix;
 
-    const destinations = keys.join("|");
-    const fetchedRows = await Promise.all(
-      missingRows.map(async (i): Promise<(MatrixCell | null)[] | null> => {
-        const url = new URL("https://rsapi.goong.io/v2/distancematrix");
-        url.searchParams.set("origins", keys[i]);
-        url.searchParams.set("destinations", destinations);
-        url.searchParams.set("vehicle", vehicle);
-        url.searchParams.set("api_key", apiKey);
+    return this.dedupeInFlight(`matrix:${vehicle}:${keys.join("|")}`, async () => {
+      const refreshedMatrix: TravelMatrix = keys.map(() => keys.map(() => null));
+      const refreshedMissingRows: number[] = [];
+      for (let i = 0; i < n; i++) {
+        let complete = true;
+        for (let j = 0; j < n; j++) {
+          if (i === j) {
+            refreshedMatrix[i][j] = { durationSec: 0, distanceM: 0 };
+            continue;
+          }
+          const cached = this.readCache(this.pairCache, pairKey(i, j));
+          if (cached) refreshedMatrix[i][j] = cached;
+          else complete = false;
+        }
+        if (!complete) refreshedMissingRows.push(i);
+      }
+      if (refreshedMissingRows.length === 0) return refreshedMatrix;
 
-        const data = await this.fetchGoongJson<GoongMatrixResponse>(url);
-        const elements = data?.rows?.[0]?.elements;
-        if (!elements || elements.length !== n) return null;
-        return elements.map((el) =>
-          el.status === "OK" && el.duration?.value != null && el.distance?.value != null
-            ? { durationSec: el.duration.value, distanceM: el.distance.value }
-            : null,
-        );
+      const destinations = keys.join("|");
+      const fetchedRows = await Promise.all(
+        refreshedMissingRows.map(async (i): Promise<(MatrixCell | null)[] | null> => {
+          const url = new URL("https://rsapi.goong.io/v2/distancematrix");
+          url.searchParams.set("origins", keys[i]);
+          url.searchParams.set("destinations", destinations);
+          url.searchParams.set("vehicle", vehicle);
+          url.searchParams.set("api_key", apiKey);
+
+          const data = await this.fetchGoongJson<GoongMatrixResponse>(url);
+          const elements = data?.rows?.[0]?.elements;
+          if (!elements || elements.length !== n) return null;
+          return elements.map((el) =>
+            el.status === "OK" && el.duration?.value != null && el.distance?.value != null
+              ? { durationSec: el.duration.value, distanceM: el.distance.value }
+              : null,
+          );
+        }),
+      );
+
+      if (fetchedRows.some((row) => row === null)) {
+        this.logger.warn(`Distance matrix failed for ${n} points`);
+        return null;
+      }
+
+      refreshedMissingRows.forEach((i, rowIdx) => {
+        const row = fetchedRows[rowIdx]!;
+        for (let j = 0; j < n; j++) {
+          if (i === j) continue;
+          refreshedMatrix[i][j] = row[j];
+          if (row[j]) this.writeCache(this.pairCache, pairKey(i, j), row[j]!, MATRIX_CACHE_MS, PAIR_CACHE_LIMIT);
+        }
+      });
+      return refreshedMatrix;
+    });
+  }
+
+  /** Ordered travel legs for display; fetches only adjacent pairs instead of a full NxN matrix. */
+  async routeLegs(points: GeoPoint[], vehicle = "car"): Promise<(MatrixCell | null)[]> {
+    const apiKey = this.config.get<string>("GOONG_API_KEY");
+    if (!apiKey || points.length < 2) return [];
+
+    const keys = points.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`);
+    return Promise.all(
+      keys.slice(0, -1).map(async (origin, i) => {
+        const destination = keys[i + 1];
+        const pairKey = `${vehicle}:${origin}>${destination}`;
+        const cached = this.readCache(this.pairCache, pairKey);
+        if (cached) return cached;
+
+        return this.dedupeInFlight(`pair:${pairKey}`, async () => {
+          const refreshed = this.readCache(this.pairCache, pairKey);
+          if (refreshed) return refreshed;
+
+          const url = new URL("https://rsapi.goong.io/v2/distancematrix");
+          url.searchParams.set("origins", origin);
+          url.searchParams.set("destinations", destination);
+          url.searchParams.set("vehicle", vehicle);
+          url.searchParams.set("api_key", apiKey);
+
+          const data = await this.fetchGoongJson<GoongMatrixResponse>(url);
+          const element = data?.rows?.[0]?.elements?.[0];
+          if (element?.status !== "OK" || element.duration?.value == null || element.distance?.value == null) {
+            return null;
+          }
+          const cell = { durationSec: element.duration.value, distanceM: element.distance.value };
+          this.writeCache(this.pairCache, pairKey, cell, MATRIX_CACHE_MS, PAIR_CACHE_LIMIT);
+          return cell;
+        });
       }),
     );
-
-    if (fetchedRows.some((row) => row === null)) {
-      this.logger.warn(`Distance matrix failed for ${n} points`);
-      return null;
-    }
-
-    missingRows.forEach((i, rowIdx) => {
-      const row = fetchedRows[rowIdx]!;
-      for (let j = 0; j < n; j++) {
-        if (i === j) continue;
-        matrix[i][j] = row[j];
-        if (row[j]) this.writeCache(this.pairCache, pairKey(i, j), row[j]!, MATRIX_CACHE_MS, PAIR_CACHE_LIMIT);
-      }
-    });
-    return matrix;
   }
 
   /** Best-effort geocode of a free-form address/name (used to anchor the day at the lodging). */
@@ -200,24 +256,29 @@ export class GeoService {
     const cached = this.geocodeCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-    let point: GeoPoint | null = null;
-    try {
-      const results = await this.autocomplete(normalized);
-      const first = results[0];
-      if (first) {
-        if (first.lat != null && first.lng != null) {
-          point = { lat: first.lat, lng: first.lng };
-        } else {
-          const detail = await this.resolve(first.providerId);
-          point = { lat: detail.lat, lng: detail.lng };
-        }
-      }
-    } catch {
-      point = null;
-    }
+    return this.dedupeInFlight(`geocode-address:${cacheKey}`, async () => {
+      const refreshed = this.readCache(this.geocodeCache, cacheKey);
+      if (refreshed !== null) return refreshed;
 
-    this.writeCache(this.geocodeCache, cacheKey, point, GEOCODE_CACHE_MS);
-    return point;
+      let point: GeoPoint | null = null;
+      try {
+        const results = await this.autocomplete(normalized);
+        const first = results[0];
+        if (first) {
+          if (first.lat != null && first.lng != null) {
+            point = { lat: first.lat, lng: first.lng };
+          } else {
+            const detail = await this.resolve(first.providerId);
+            point = { lat: detail.lat, lng: detail.lng };
+          }
+        }
+      } catch {
+        point = null;
+      }
+
+      this.writeCache(this.geocodeCache, cacheKey, point, GEOCODE_CACHE_MS);
+      return point;
+    });
   }
 
   /**
@@ -235,20 +296,25 @@ export class GeoService {
     const cached = this.pathCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return cached.value;
 
-    // Goong passes intermediate stops through `destination` itself, joined by
-    // ";" (origin -> dest1 -> dest2 -> ...); there is no separate waypoints param.
-    const url = new URL("https://rsapi.goong.io/v2/direction");
-    url.searchParams.set("origin", coords[0]);
-    url.searchParams.set("destination", coords.slice(1).join(";"));
-    url.searchParams.set("vehicle", vehicle);
-    url.searchParams.set("api_key", apiKey);
+    return this.dedupeInFlight(`path:${cacheKey}`, async () => {
+      const refreshed = this.pathCache.get(cacheKey);
+      if (refreshed && refreshed.expiresAt > Date.now()) return refreshed.value;
 
-    const data = await this.fetchGoongJson<GoongDirectionResponse>(url);
-    const encoded = data?.routes?.[0]?.overview_polyline?.points ?? null;
-    if (!encoded) this.logger.warn(`Directions path failed for ${points.length} points`);
+      // Goong passes intermediate stops through `destination` itself, joined by
+      // ";" (origin -> dest1 -> dest2 -> ...); there is no separate waypoints param.
+      const url = new URL("https://rsapi.goong.io/v2/direction");
+      url.searchParams.set("origin", coords[0]);
+      url.searchParams.set("destination", coords.slice(1).join(";"));
+      url.searchParams.set("vehicle", vehicle);
+      url.searchParams.set("api_key", apiKey);
 
-    this.writeCache(this.pathCache, cacheKey, encoded, PATH_CACHE_MS);
-    return encoded;
+      const data = await this.fetchGoongJson<GoongDirectionResponse>(url);
+      const encoded = data?.routes?.[0]?.overview_polyline?.points ?? null;
+      if (!encoded) this.logger.warn(`Directions path failed for ${points.length} points`);
+
+      this.writeCache(this.pathCache, cacheKey, encoded, PATH_CACHE_MS);
+      return encoded;
+    });
   }
 
   private async searchNominatim(query: string): Promise<GeoSearchResult[]> {
@@ -293,30 +359,26 @@ export class GeoService {
     const cached = this.readCache(this.autocompleteCache, cacheKey);
     if (cached) return cached;
 
-    const settled = await Promise.allSettled([
-      this.autocompleteGoongV2(query, apiKey, location),
-      this.autocompleteGoongLegacy(query, apiKey, location),
-    ]);
-    const autocompleteGroups = settled
-      .filter((result): result is PromiseFulfilledResult<GeoAutocompleteResult[]> => result.status === "fulfilled")
-      .map((result) => result.value);
+    return this.dedupeInFlight(`autocomplete:${cacheKey}`, async () => {
+      const refreshed = this.readCache(this.autocompleteCache, cacheKey);
+      if (refreshed) return refreshed;
 
-    let results = this.mergeAutocompleteResults(...autocompleteGroups);
-    if (results.length === 0) {
-      const geocodeSettled = await Promise.allSettled([
-        this.forwardGeocodeGoong(query, apiKey),
-        this.forwardGeocodeGoongLegacy(query, apiKey),
-      ]);
-      const geocodeGroups = geocodeSettled
-        .filter((result): result is PromiseFulfilledResult<GeoAutocompleteResult[]> => result.status === "fulfilled")
-        .map((result) => result.value);
-      results = this.mergeAutocompleteResults(...geocodeGroups);
-    }
+      let results = await this.autocompleteGoongV2(query, apiKey, location);
+      if (results.length === 0) {
+        results = await this.autocompleteGoongLegacy(query, apiKey, location);
+      }
+      if (results.length === 0) {
+        results = await this.forwardGeocodeGoong(query, apiKey);
+      }
+      if (results.length === 0) {
+        results = await this.forwardGeocodeGoongLegacy(query, apiKey);
+      }
 
-    if (results.length > 0) {
-      this.writeCache(this.autocompleteCache, cacheKey, results, AUTOCOMPLETE_CACHE_MS);
-    }
-    return results;
+      if (results.length > 0) {
+        this.writeCache(this.autocompleteCache, cacheKey, results, AUTOCOMPLETE_CACHE_MS);
+      }
+      return results;
+    });
   }
 
   private async autocompleteGoongV2(
@@ -434,29 +496,42 @@ export class GeoService {
     const cached = this.readCache(this.detailCache, placeId);
     if (cached) return cached;
 
-    const detailUrl = new URL("https://rsapi.goong.io/v2/place/detail");
-    detailUrl.searchParams.set("place_id", placeId);
-    detailUrl.searchParams.set("api_key", apiKey);
-    const res = await fetch(detailUrl);
-    if (!res.ok) throw new ServiceUnavailableException("Không thể lấy chi tiết địa điểm");
+    return this.dedupeInFlight(`detail:${placeId}`, async () => {
+      const refreshed = this.readCache(this.detailCache, placeId);
+      if (refreshed) return refreshed;
 
-    const data = (await res.json()) as GoongPlaceDetail;
-    const location = data.result?.geometry?.location;
-    if (data.status && data.status !== "OK") {
-      throw new ServiceUnavailableException("Không thể lấy chi tiết địa điểm");
-    }
-    if (!location || !data.result) throw new ServiceUnavailableException("Địa điểm không có toạ độ");
+      const detailUrl = new URL("https://rsapi.goong.io/v2/place/detail");
+      detailUrl.searchParams.set("place_id", placeId);
+      detailUrl.searchParams.set("api_key", apiKey);
+      const res = await fetch(detailUrl);
+      if (!res.ok) throw new ServiceUnavailableException("Không thể lấy chi tiết địa điểm");
 
-    const result: GeoSearchResult = {
-      providerId: `goong:${placeId}`,
-      name: data.result.name ?? data.result.formatted_address?.split(",")[0] ?? "Địa điểm",
-      address: data.result.formatted_address ?? data.result.name ?? "",
-      lat: location.lat,
-      lng: location.lng,
-      category: data.result.types?.[0] ?? null,
-    };
-    this.writeCache(this.detailCache, placeId, result, DETAIL_CACHE_MS);
-    return result;
+      const data = (await res.json()) as GoongPlaceDetail;
+      const location = data.result?.geometry?.location;
+      if (data.status && data.status !== "OK") {
+        throw new ServiceUnavailableException("Không thể lấy chi tiết địa điểm");
+      }
+      if (!location || !data.result) throw new ServiceUnavailableException("Địa điểm không có toạ độ");
+
+      const result: GeoSearchResult = {
+        providerId: `goong:${placeId}`,
+        name: data.result.name ?? data.result.formatted_address?.split(",")[0] ?? "Địa điểm",
+        address: data.result.formatted_address ?? data.result.name ?? "",
+        lat: location.lat,
+        lng: location.lng,
+        category: data.result.types?.[0] ?? null,
+      };
+      this.writeCache(this.detailCache, placeId, result, DETAIL_CACHE_MS);
+      return result;
+    });
+  }
+
+  private dedupeInFlight<T>(key: string, task: () => Promise<T>): Promise<T> {
+    const existing = this.inFlight.get(key) as Promise<T> | undefined;
+    if (existing) return existing;
+    const promise = task().finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, promise);
+    return promise;
   }
 
   private readCache<T>(cache: Map<string, CacheEntry<T>>, key: string): T | null {

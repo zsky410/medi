@@ -345,15 +345,17 @@ function DayRouteLegsProvider({
   tripId,
   dayId,
   orderedIds,
+  enabled,
   children,
 }: {
   tripId: string;
   dayId: string;
   orderedIds: string[];
+  enabled: boolean;
   children: (legs: Map<string, RouteLegDto> | null, failed: boolean) => ReactNode;
 }) {
-  const { legsByFrom, isError } = useDayRouteLegs(tripId, dayId, orderedIds);
-  return <>{children(legsByFrom, isError)}</>;
+  const { legsByFrom, isError } = useDayRouteLegs(tripId, dayId, orderedIds, enabled);
+  return <>{children(legsByFrom, enabled ? isError : true)}</>;
 }
 
 export function ItineraryBoard({
@@ -363,6 +365,7 @@ export function ItineraryBoard({
   onHoverPlace,
   onPreviewPlace,
   onPlaceAdded,
+  activeDayId,
   isPro = false,
 }: {
   trip: TripDetailDto;
@@ -371,6 +374,7 @@ export function ItineraryBoard({
   onHoverPlace?: (id: string | null) => void;
   onPreviewPlace?: (pin: MapPreviewPin | null) => void;
   onPlaceAdded?: (placeId: string) => void;
+  activeDayId?: string | null;
   isPro?: boolean;
 }) {
   const queryClient = useQueryClient();
@@ -848,7 +852,12 @@ export function ItineraryBoard({
               exportLocked={!isPro}
               notice={dayNotice?.dayId === day.id ? dayNotice.message : undefined}
             >
-              <DayRouteLegsProvider tripId={trip.id} dayId={day.id} orderedIds={dayPlaceIds}>
+              <DayRouteLegsProvider
+                tripId={trip.id}
+                dayId={day.id}
+                orderedIds={dayPlaceIds}
+                enabled={activeDayId === day.id}
+              >
                 {(legs, failed) => renderPlaces(day.id, legs, failed)}
               </DayRouteLegsProvider>
             </DayColumn>

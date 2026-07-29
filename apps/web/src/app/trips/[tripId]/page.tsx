@@ -250,6 +250,7 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   onHoverPlace={setHoveredPlaceId}
                   onPreviewPlace={setMapPreview}
                   onPlaceAdded={handlePlaceAdded}
+                  activeDayId={activeDay?.id ?? null}
                   isPro={isPro}
                 />
               </div>

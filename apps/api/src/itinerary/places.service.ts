@@ -174,32 +174,31 @@ export class PlacesService {
     const placed = day.places.filter((p) => p.lat != null && p.lng != null);
     if (placed.length === 0) return { legs: [], vehicle: ROUTE_VEHICLE };
 
-    const { cells, anchorIndex } = await this.buildRouteCells(
-      tripId,
-      placed.map((p) => ({ lat: p.lat!, lng: p.lng! })),
-    );
+    const orderedPoints: GeoPoint[] = placed.map((p) => ({ lat: p.lat!, lng: p.lng! }));
+    const orderedIds = placed.map((p) => p.id);
+    const anchor = await this.getLodgingAnchor(tripId);
+    if (anchor) {
+      orderedPoints.unshift(anchor);
+      orderedPoints.push(anchor);
+      orderedIds.unshift(ROUTE_LODGING_ID);
+      orderedIds.push(ROUTE_LODGING_ID);
+    }
+    const routeLegs = await this.geo.routeLegs(orderedPoints, ROUTE_VEHICLE);
 
     const legs: RouteLegDto[] = [];
-    const pushLeg = (fromId: string, toId: string, from: number, to: number) => {
-      const cell = cells[from][to];
+    const pushLeg = (index: number) => {
+      const realLeg = routeLegs[index];
+      const cell = realLeg ?? completeMatrix(null, [orderedPoints[index], orderedPoints[index + 1]])[0][1];
       legs.push({
-        fromId,
-        toId,
+        fromId: orderedIds[index],
+        toId: orderedIds[index + 1],
         durationSec: Math.round(cell.durationSec),
         distanceM: Math.round(cell.distanceM),
-        estimated: cell.estimated,
+        estimated: realLeg == null,
       });
     };
 
-    if (anchorIndex != null) {
-      pushLeg(ROUTE_LODGING_ID, placed[0].id, anchorIndex, 0);
-    }
-    for (let i = 0; i + 1 < placed.length; i++) {
-      pushLeg(placed[i].id, placed[i + 1].id, i, i + 1);
-    }
-    if (anchorIndex != null) {
-      pushLeg(placed[placed.length - 1].id, ROUTE_LODGING_ID, placed.length - 1, anchorIndex);
-    }
+    for (let i = 0; i + 1 < orderedPoints.length; i++) pushLeg(i);
     return { legs, vehicle: ROUTE_VEHICLE };
   }
 

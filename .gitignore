@@ -13,6 +13,7 @@ output/
 *.log
 *.tsbuildinfo
 .DS_Store
+Requirements.csv
 
 .env
 .env.*
