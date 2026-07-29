@@ -83,6 +83,28 @@ test("Explore only lists public trips that still allow free cloning", async () =
   });
 });
 
+test("my trips include trips owned by the user even when membership is missing", async () => {
+  let listMineWhere: unknown;
+  const prisma = {
+    trip: {
+      findMany: async (args: { where: unknown }) => {
+        listMineWhere = args.where;
+        return [];
+      },
+    },
+  };
+  const service = new TripsService(prisma as never, {} as never);
+
+  await service.listMine("creator-1");
+
+  assert.deepEqual(listMineWhere, {
+    OR: [
+      { ownerId: "creator-1" },
+      { members: { some: { userId: "creator-1" } } },
+    ],
+  });
+});
+
 test("free public clone is blocked after a trip becomes a shop guide", async () => {
   const prisma = {
     trip: {

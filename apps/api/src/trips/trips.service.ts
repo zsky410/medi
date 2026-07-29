@@ -94,7 +94,12 @@ export class TripsService {
 
   async listMine(userId: string): Promise<TripDto[]> {
     const trips = await this.prisma.trip.findMany({
-      where: { members: { some: { userId } } },
+      where: {
+        OR: [
+          { ownerId: userId },
+          { members: { some: { userId } } },
+        ],
+      },
       include: tripInclude,
       orderBy: { startDate: "desc" },
     });
