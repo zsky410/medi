@@ -4,7 +4,9 @@ import {
   type CreatePlaceInput,
   type DayRouteLegsDto,
   type DayRoutePathDto,
+  type ExpenseCategory,
   type OptimizeDayResult,
+  type PlaceCategory,
   type ReorderPlacesInput,
   type RouteLegDto,
   type UpdatePlaceInput,
@@ -15,6 +17,15 @@ import { TripAccessService } from "../trips/trip-access.service";
 import { completeMatrix, optimizeRoute, type RouteCell } from "./route-optimizer";
 
 const ROUTE_VEHICLE = "car";
+
+function expenseCategoryForPlace(category: PlaceCategory): ExpenseCategory {
+  if (category === "ATTRACTION") return "ACTIVITY";
+  if (category === "FOOD") return "FOOD";
+  if (category === "LODGING") return "LODGING";
+  if (category === "TRANSPORT") return "TRANSPORT";
+  if (category === "SHOPPING") return "SHOPPING";
+  return "OTHER";
+}
 
 @Injectable()
 export class PlacesService {
@@ -34,7 +45,7 @@ export class PlacesService {
       where: { tripId, dayId: input.dayId ?? null },
       orderBy: { order: "desc" },
     });
-    return this.prisma.place.create({
+    const place = await this.prisma.place.create({
       data: {
         tripId,
         dayId: input.dayId ?? null,
@@ -49,12 +60,13 @@ export class PlacesService {
         order: (last?.order ?? -1) + 1,
       },
     });
+    return this.syncPlaceExpense(tripId, userId, place);
   }
 
   async update(tripId: string, placeId: string, userId: string, input: UpdatePlaceInput) {
     await this.access.assertRole(tripId, userId, "EDITOR");
     await this.assertPlaceInTrip(tripId, placeId);
-    return this.prisma.place.update({
+    const place = await this.prisma.place.update({
       where: { id: placeId },
       data: {
         dayId: input.dayId === undefined ? undefined : input.dayId,
@@ -68,11 +80,21 @@ export class PlacesService {
         providerId: input.providerId,
       },
     });
+    return this.syncPlaceExpense(tripId, userId, place);
   }
 
   async remove(tripId: string, placeId: string, userId: string) {
     await this.access.assertRole(tripId, userId, "EDITOR");
-    await this.assertPlaceInTrip(tripId, placeId);
+    const place = await this.prisma.place.findFirst({ where: { id: placeId, tripId } });
+    if (!place) throw new NotFoundException("Không tìm thấy địa điểm");
+
+    if (place.expenseId) {
+      const expense = await this.prisma.expense.findFirst({
+        where: { id: place.expenseId, tripId },
+      });
+      if (expense) await this.prisma.expense.delete({ where: { id: expense.id } });
+    }
+
     await this.prisma.place.delete({ where: { id: placeId } });
   }
 
@@ -202,6 +224,78 @@ export class PlacesService {
     if (points.length < 2) return { encodedPolyline: null, vehicle: ROUTE_VEHICLE };
     const encodedPolyline = await this.geo.directionsPath(points, ROUTE_VEHICLE);
     return { encodedPolyline, vehicle: ROUTE_VEHICLE };
+  }
+
+  /**
+   * Keep Place.cost mirrored as an Expense so totals / budget / settlement stay in sync.
+   * Same pattern as booking attachments → expense.
+   */
+  private async syncPlaceExpense(
+    tripId: string,
+    userId: string,
+    place: {
+      id: string;
+      name: string;
+      category: PlaceCategory;
+      cost: number | null;
+      expenseId: string | null;
+    },
+  ) {
+    const amount = place.cost != null && place.cost > 0 ? place.cost : null;
+
+    if (amount != null) {
+      const category = expenseCategoryForPlace(place.category);
+      if (place.expenseId) {
+        const existing = await this.prisma.expense.findFirst({
+          where: { id: place.expenseId, tripId },
+        });
+        if (existing) {
+          await this.prisma.expense.update({
+            where: { id: place.expenseId },
+            data: {
+              title: place.name,
+              amount,
+              currency: "VND",
+              category,
+            },
+          });
+          return place;
+        }
+      }
+
+      const members = await this.prisma.tripMember.findMany({
+        where: { tripId },
+        select: { userId: true },
+      });
+      const expense = await this.prisma.expense.create({
+        data: {
+          tripId,
+          title: place.name,
+          amount,
+          currency: "VND",
+          category,
+          payerId: userId,
+          splitWith: { connect: members.map((m) => ({ id: m.userId })) },
+        },
+      });
+      return this.prisma.place.update({
+        where: { id: place.id },
+        data: { expenseId: expense.id },
+      });
+    }
+
+    if (place.expenseId) {
+      const existing = await this.prisma.expense.findFirst({
+        where: { id: place.expenseId, tripId },
+      });
+      if (existing) await this.prisma.expense.delete({ where: { id: existing.id } });
+      return this.prisma.place.update({
+        where: { id: place.id },
+        data: { expenseId: null },
+      });
+    }
+
+    return place;
   }
 
   /**

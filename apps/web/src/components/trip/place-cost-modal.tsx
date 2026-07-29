@@ -61,6 +61,8 @@ export function PlaceCostModal({
       api(`/trips/${tripId}/places/${place!.id}`, { method: "PATCH", body: JSON.stringify(input) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", tripId, "summary"] });
       onClose();
     },
   });
@@ -153,6 +155,10 @@ export function PlaceCostModal({
               className="w-full resize-y rounded-xl border border-[#E5E7EB] px-3 py-2 text-sm font-medium text-[#374151] outline-none placeholder:text-[#9CA3AF] focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
             />
           </div>
+
+          <p className="text-xs font-medium text-[#9CA3AF]">
+            Chi phí này sẽ tự động thêm vào tab Chi phí để tính ngân sách.
+          </p>
 
           <div className="flex gap-2 pt-2">
             <Button

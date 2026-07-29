@@ -147,6 +147,8 @@ model Place {
   note       String?
   order      Int           @default(0)
   cost       Float?
+  /** Linked ledger entry when place has an estimated cost (mirrors booking → expense). */
+  expenseId  String?
   providerId String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt

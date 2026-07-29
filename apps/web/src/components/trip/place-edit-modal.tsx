@@ -36,6 +36,8 @@ export function PlaceEditModal({
       api(`/trips/${tripId}/places/${place!.id}`, { method: "PATCH", body: JSON.stringify(input) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trip", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", tripId] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", tripId, "summary"] });
       onClose();
     },
   });

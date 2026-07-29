@@ -30,6 +30,9 @@ export class PlacesController {
   ) {
     const place = await this.places.create(tripId, user.id, input);
     this.realtime.emitToTrip(tripId, { type: "itinerary:changed" }, socketId);
+    if (input.cost != null && input.cost > 0) {
+      this.realtime.emitToTrip(tripId, { type: "expenses:changed" }, socketId);
+    }
     return place;
   }
 
@@ -85,6 +88,9 @@ export class PlacesController {
   ) {
     const place = await this.places.update(tripId, placeId, user.id, input);
     this.realtime.emitToTrip(tripId, { type: "itinerary:changed" }, socketId);
+    if (input.cost !== undefined || input.name !== undefined || input.category !== undefined) {
+      this.realtime.emitToTrip(tripId, { type: "expenses:changed" }, socketId);
+    }
     return place;
   }
 
@@ -97,6 +103,7 @@ export class PlacesController {
   ) {
     await this.places.remove(tripId, placeId, user.id);
     this.realtime.emitToTrip(tripId, { type: "itinerary:changed" }, socketId);
+    this.realtime.emitToTrip(tripId, { type: "expenses:changed" }, socketId);
     return { ok: true };
   }
 }

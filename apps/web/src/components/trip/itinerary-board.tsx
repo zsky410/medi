@@ -474,7 +474,11 @@ export function ItineraryBoard({
 
   const deleteMutation = useMutation({
     mutationFn: (placeId: string) => api(`/trips/${trip.id}/places/${placeId}`, { method: "DELETE" }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trip", trip.id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", trip.id] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", trip.id, "summary"] });
+    },
   });
 
   const bulkMutation = useMutation({
@@ -534,6 +538,8 @@ export function ItineraryBoard({
     onSuccess: () => {
       setCheckedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", trip.id] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", trip.id, "summary"] });
     },
   });
 

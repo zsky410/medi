@@ -49,6 +49,8 @@ export function AiSuggestPanel({ trip, canEdit }: { trip: TripDetailDto; canEdit
       };
       await api(`/trips/${trip.id}/places`, { method: "POST", body: JSON.stringify(input) });
       queryClient.invalidateQueries({ queryKey: ["trip", trip.id] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", trip.id] });
+      queryClient.invalidateQueries({ queryKey: ["expenses", trip.id, "summary"] });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không thêm được địa điểm");
     } finally {

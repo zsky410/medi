@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, Baloo_2 } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "./providers";
+import { createHydrationExtensionCleanupScript } from "@/lib/hydration-extension-cleanup";
 
 const beVietnam = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -38,6 +40,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="font-sans" suppressHydrationWarning>
+        <Script
+          id="hydration-extension-cleanup"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: createHydrationExtensionCleanupScript() }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>
