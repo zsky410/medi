@@ -22,6 +22,7 @@ export interface UserDto {
   name: string;
   avatarUrl: string | null;
   plan: Plan;
+  proExpiresAt: string | null;
   authProvider: AuthProvider;
   defaultCurrency: string;
   locale: string;

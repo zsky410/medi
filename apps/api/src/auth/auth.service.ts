@@ -28,6 +28,7 @@ export class AuthService {
       name: user.name,
       avatarUrl: user.avatarUrl,
       plan: user.plan,
+      proExpiresAt: user.proExpiresAt?.toISOString() ?? null,
       authProvider: user.authProvider,
       defaultCurrency: user.defaultCurrency,
       locale: user.locale,

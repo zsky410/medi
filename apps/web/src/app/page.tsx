@@ -389,13 +389,13 @@ export default function LandingPage() {
                   <Sticker color="#FF6B2C" rotate={12}>Best deal 🔥</Sticker>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-[#8A7563] mb-0.5 italic">rẻ hơn 1 bữa lẩu mỗi tháng</p>
+                  <p className="text-xs font-bold text-[#8A7563] mb-0.5 italic">tuần · tháng · năm, tính năng như nhau</p>
                   <h3 className="font-display font-extrabold text-xl text-[#2B2118] mb-1">Mê Đi PRO</h3>
                   <div className="font-display font-extrabold text-3xl mb-1">
-                    <span className="gradient-text">399.000 ₫</span>
-                    <span className="text-base font-bold text-[#8A7563]">/năm</span>
+                    <span className="gradient-text">69.000 ₫</span>
+                    <span className="text-base font-bold text-[#8A7563]">/tuần</span>
                   </div>
-                  <p className="text-xs font-bold text-[#8A7563] mb-5">≈ 33.000 ₫/tháng</p>
+                  <p className="text-xs font-bold text-[#8A7563] mb-5">tháng 129.000 ₫ · năm 399.000 ₫</p>
                   <ul className="space-y-3 mb-8">
                     {[
                       "✅ Tất cả tính năng Free",
@@ -424,7 +424,7 @@ export default function LandingPage() {
                     </Button>
                   </Link>
                   <div className="flex justify-center gap-2 mt-3.5">
-                    {["💳 Card", "MoMo", "VNPay", "Zalo"].map((m, i) => (
+                    {["SePay", "VietQR", "Chuyển khoản"].map((m, i) => (
                       <span
                         key={i}
                         className="text-[9px] bg-[#FFF3EB] text-[#8A7563] px-2 py-0.5 rounded-full border border-[#F3E3D3] font-bold"

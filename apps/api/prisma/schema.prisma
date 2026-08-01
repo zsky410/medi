@@ -12,6 +12,19 @@ enum Plan {
   PRO
 }
 
+enum ProPaymentIntentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELED
+}
+
+enum ProBillingPeriod {
+  WEEK
+  MONTH
+  YEAR
+}
+
 enum AuthProvider {
   LOCAL
   GOOGLE
@@ -66,8 +79,7 @@ model User {
   avatarUrl    String?
   authProvider AuthProvider @default(LOCAL)
   plan         Plan         @default(FREE)
-  stripeCustomerId     String? @unique
-  stripeSubscriptionId String?
+  proExpiresAt DateTime?
   refreshHash       String?
   defaultCurrency   String       @default("VND")
   locale            String       @default("vi")
@@ -85,6 +97,26 @@ model User {
   settlementsTo    Settlement[]  @relation("SettlementTo")
   guides           Guide[]       @relation("GuideCreator")
   guidePurchases   GuidePurchase[] @relation("GuideBuyer")
+  proPaymentIntents ProPaymentIntent[]
+}
+
+model ProPaymentIntent {
+  id                 String                 @id @default(cuid())
+  userId             String
+  user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount             Float
+  currency           String                 @default("VND")
+  billingPeriod      ProBillingPeriod       @default(YEAR)
+  durationDays       Int                    @default(365)
+  status             ProPaymentIntentStatus @default(PENDING)
+  checkoutCode       String                 @unique
+  sepayTransactionId String?                @unique
+  paidAt             DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Trip {

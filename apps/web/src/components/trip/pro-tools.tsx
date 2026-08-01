@@ -5,8 +5,9 @@ import Link from "next/link";
 import {
   FREE_FEATURES,
   PRO_FEATURES,
-  PRO_PRICE_VND,
+  PRO_PLANS,
   type CheckoutSessionDto,
+  type ProBillingPeriod,
   type TripDetailDto,
 } from "@medi/types";
 import { api, ApiError } from "@/lib/api";
@@ -18,6 +19,18 @@ export function UpgradePrompt({ open, onClose, feature }: { open: boolean; onClo
   const { user } = useAuth();
   const [error, setError] = useState("");
   const [redirecting, setRedirecting] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<ProBillingPeriod>("YEAR");
+  const selectedPlan = PRO_PLANS.find((plan) => plan.period === selectedPeriod) ?? PRO_PLANS[2];
+  const monthPlan = PRO_PLANS.find((plan) => plan.period === "MONTH") ?? PRO_PLANS[1];
+  const weekPlan = PRO_PLANS.find((plan) => plan.period === "WEEK") ?? PRO_PLANS[0];
+  const yearlySavings = monthPlan.price * 12 - selectedPlan.price;
+  const monthlySavings = weekPlan.price * 4 - selectedPlan.price;
+  const savingsNote =
+    selectedPeriod === "YEAR"
+      ? `Tiết kiệm ${formatMoney(yearlySavings)} so với trả theo tháng`
+      : selectedPeriod === "MONTH"
+        ? `Tiết kiệm ${formatMoney(monthlySavings)} so với trả theo tuần`
+        : "Linh hoạt nhất cho chuyến đi ngắn";
 
   async function upgrade() {
     if (!user) {
@@ -27,7 +40,10 @@ export function UpgradePrompt({ open, onClose, feature }: { open: boolean; onClo
     setRedirecting(true);
     setError("");
     try {
-      const session = await api<CheckoutSessionDto>("/billing/checkout", { method: "POST" });
+      const session = await api<CheckoutSessionDto>("/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ period: selectedPeriod }),
+      });
       window.location.href = session.url;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tạo được phiên thanh toán");
@@ -81,12 +97,32 @@ export function UpgradePrompt({ open, onClose, feature }: { open: boolean; onClo
                   Mê Đi PRO ✨
                 </h3>
                 <p className="mt-1 text-2xl font-display font-extrabold text-[#2B2118]">
-                  {formatMoney(PRO_PRICE_VND)}
+                  {formatMoney(selectedPlan.price)}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[#8A7563]">
-                  mỗi năm · rẻ hơn 1 bữa lẩu
+                  gói {selectedPlan.label.toLowerCase()} · {selectedPlan.durationLabel}
                 </p>
               </div>
+              <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-[#F3E3D3] bg-[#FFF9F2] p-1">
+                {PRO_PLANS.map((plan) => (
+                  <button
+                    key={plan.period}
+                    type="button"
+                    onClick={() => setSelectedPeriod(plan.period)}
+                    className={`min-w-0 cursor-pointer rounded-lg px-1.5 py-1.5 text-center text-[10px] font-extrabold transition ${
+                      selectedPeriod === plan.period
+                        ? "bg-gradient-to-r from-brand-500 to-[#FF3D77] text-white"
+                        : "bg-white text-[#8A7563]"
+                    }`}
+                  >
+                    <span className="block">{plan.label}</span>
+                    <span className="block">{formatMoney(plan.price)}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="rounded-full bg-brand-50 px-3 py-2 text-center text-[11px] font-extrabold text-brand-700">
+                {savingsNote}
+              </p>
               <ul className="space-y-2 border-t border-[#F3E3D3] pt-4">
                 <li className="flex items-start gap-2 text-xs font-extrabold text-[#2B2118]">
                   <span className="text-brand-500">✓</span>
@@ -118,7 +154,7 @@ export function UpgradePrompt({ open, onClose, feature }: { open: boolean; onClo
                 disabled={redirecting}
                 className="w-full border-none bg-gradient-to-r from-brand-500 to-[#FF3D77] py-2.5 text-sm text-white shadow-md shadow-brand-500/20 hover:from-brand-600 hover:to-[#E8356C]"
               >
-                {redirecting ? "Đang nối chuyến bay..." : "Lên PRO ngay thôi! 🚀"}
+                {redirecting ? "Đang tạo mã chuyển khoản..." : "Lên PRO qua SePay"}
               </Button>
               <ErrorText>{error}</ErrorText>
             </div>
