@@ -14,6 +14,7 @@ import { AiModule } from "./ai/ai.module";
 import { AffiliateModule } from "./affiliate/affiliate.module";
 import { ShopModule } from "./shop/shop.module";
 import { ImportModule } from "./import/import.module";
+import { AdminModule } from "./admin/admin.module";
 import { HealthController } from "./health/health.controller";
 
 @Module({
@@ -33,6 +34,7 @@ import { HealthController } from "./health/health.controller";
     AffiliateModule,
     ShopModule,
     ImportModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

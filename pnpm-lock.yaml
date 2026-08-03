@@ -22,6 +22,55 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2
 
+  apps/admin:
+    dependencies:
+      '@medi/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@tanstack/react-query':
+        specifier: ^5.66.0
+        version: 5.101.2(react@19.2.7)
+      lucide-react:
+        specifier: ^1.23.0
+        version: 1.23.0(react@19.2.7)
+      next:
+        specifier: ^15.3.0
+        version: 15.5.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.1.0
+        version: 4.3.2
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.0
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.17)
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+      postcss:
+        specifier: ^8.5.0
+        version: 8.5.16
+      tailwindcss:
+        specifier: ^4.1.0
+        version: 4.3.2
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   apps/api:
     dependencies:
       '@medi/types':

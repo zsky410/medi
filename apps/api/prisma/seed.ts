@@ -16,10 +16,16 @@ async function main() {
     update: {},
     create: { email: "ban@medi.app", name: "Bạn Đồng Hành", passwordHash: password },
   });
+  await prisma.user.upsert({
+    where: { email: "admin@medi.app" },
+    update: { role: "ADMIN" },
+    create: { email: "admin@medi.app", name: "Admin Mê Đi", passwordHash: password, role: "ADMIN" },
+  });
 
   console.log("Seeded demo users:");
   console.log("  demo@medi.app / medi1234");
   console.log("  ban@medi.app  / medi1234");
+  console.log("  admin@medi.app / medi1234");
 }
 
 main()

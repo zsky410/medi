@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #fff9f2;
+  --color-brand-100: #fff3eb;
+  --color-brand-200: #ffe1cf;
+  --color-brand-300: #ffc4a8;
+  --color-brand-400: #ff9b73;
+  --color-brand-500: #ff6b2c;
+  --color-brand-600: #ff6b2c;
+  --color-brand-700: #e8551a;
+  --color-brand-800: #c23e0b;
+  --color-brand-900: #9c2e05;
+  --font-sans: var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-baloo-2), var(--font-be-vietnam), ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --admin-ink: #2b2118;
+  --admin-coffee: #433326;
+  --admin-muted: #8a7563;
+  --admin-line: #f0dfcd;
+  --admin-paper: #fff9f2;
+  --admin-card: #fffdf9;
+  --admin-accent: #ff6b2c;
+  --admin-rose: #ff3d77;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  @apply bg-[#fff9f2] text-[#2b2118] antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 107, 44, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 107, 44, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 28% 18%, rgba(255, 201, 60, 0.16), transparent 31rem),
+    radial-gradient(circle at 82% 8%, rgba(255, 61, 119, 0.09), transparent 28rem);
+  background-size: 36px 36px, 36px 36px, auto, auto;
+}
+
+::selection {
+  background: #ff6b2c;
+  color: white;
+}
+
+.admin-canvas {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 249, 242, 0.88)),
+    var(--admin-paper);
+}
+
+.paper-surface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 252, 248, 0.82)),
+    var(--admin-card);
+  box-shadow:
+    0 22px 60px rgba(83, 52, 29, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+.dark-surface {
+  background:
+    linear-gradient(145deg, rgba(67, 51, 38, 0.98), rgba(43, 33, 24, 0.98)),
+    #2b2118;
+  box-shadow:
+    0 24px 80px rgba(43, 33, 24, 0.2),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+.route-thread {
+  background-image:
+    radial-gradient(circle, rgba(255, 107, 44, 0.28) 1.2px, transparent 1.2px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(90deg, transparent, black 16%, black 84%, transparent);
+}
+
+.chart-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 249, 242, 0.86)),
+    var(--admin-card);
+}
+
+.chart-bar {
+  transform-origin: bottom;
+  animation: chart-rise 760ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.pulse-line {
+  stroke-dasharray: 420;
+  stroke-dashoffset: 420;
+  animation: draw-line 1.4s ease-out forwards;
+}
+
+.metric-pop {
+  animation: metric-pop 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes chart-rise {
+  from {
+    transform: scaleY(0.08);
+    opacity: 0.25;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes draw-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes metric-pop {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.admin-table tbody tr {
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(255, 243, 235, 0.72);
+}
+
+.admin-table th {
+  letter-spacing: 0.04em;
+}
+
+.focusable-ring:focus-visible {
+  outline: 3px solid rgba(255, 107, 44, 0.28);
+  outline-offset: 3px;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+label[for],
+summary,
+select:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="file"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #f0dfcd;
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ff6b2c;
+}

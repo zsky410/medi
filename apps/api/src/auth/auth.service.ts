@@ -27,6 +27,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl,
+      role: user.role,
       plan: user.plan,
       proExpiresAt: user.proExpiresAt?.toISOString() ?? null,
       authProvider: user.authProvider,
@@ -128,7 +129,7 @@ export class AuthService {
   }
 
   private async issueTokens(user: User): Promise<AuthResponse> {
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
     const accessToken = await this.jwt.signAsync(payload, {
       secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
       expiresIn: (this.config.get<string>("JWT_ACCESS_TTL") ?? "15m") as JwtSignOptions["expiresIn"],

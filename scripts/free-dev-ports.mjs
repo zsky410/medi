@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Free medi dev ports (3002 web, 4000 API) before starting a new dev session.
+ * Free medi dev ports (3002 web, 3003 admin, 4000 API) before starting a new dev session.
  * Prevents EADDRINUSE when a previous pnpm dev was not stopped cleanly.
  */
 import { execSync } from "node:child_process";
 
-const PORTS = [3002, 4000];
+const PORTS = [3002, 3003, 4000];
 
 const DEV_PATTERNS = [
   "medi/node_modules/.bin/../turbo/bin/turbo run dev",
   "medi/apps/web/node_modules/.bin/../next/dist/bin/next dev --port 3002",
+  "medi/apps/admin/node_modules/.bin/../next/dist/bin/next dev --port 3003",
   "medi/apps/api/node_modules/.bin/../@nestjs/cli/bin/nest.js start --watch",
 ];
 
@@ -50,7 +51,7 @@ for (const pattern of DEV_PATTERNS) {
 }
 
 if (freed === 0) {
-  console.log("Dev ports 3002 and 4000 are free.");
+  console.log("Dev ports 3002, 3003 and 4000 are free.");
 } else {
   execSync("sleep 0.5");
   console.log(`Freed ${freed} stale process(es).`);
