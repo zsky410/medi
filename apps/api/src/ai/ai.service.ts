@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { customAlphabet } from "nanoid";
 import type {
@@ -10,11 +10,32 @@ import type {
   SuggestPlacesInput,
   SuggestPlacesResultDto,
 } from "@medi/types";
+import { GeoService } from "../geo/geo.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { createAiProvider } from "./ai.provider-impl";
 import type { AiProvider } from "./ai.providers";
+import {
+  AiWebPlaceResearchProvider,
+  DayPlannerService,
+  DestinationResolverService,
+  IntentNormalizerService,
+  PlaceCatalogService,
+  PlaceDeduplicationService,
+  PlaceEnrichmentService,
+  PlaceProviderService,
+  PlaceResearchService,
+  PlaceResolverService,
+  PlaceScoringService,
+  PlaceSelectionService,
+  PlanningRouteOptimizerService,
+  TripNarratorService,
+  TripPersistenceService,
+  buildGenerationMetadata,
+  ensureEnoughPlaces,
+} from "./services";
 
 const generateInviteCode = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
+const generateRequestId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 const FREE_DAILY_LIMIT = 3;
 
 function addDays(date: Date, days: number): Date {
@@ -23,11 +44,13 @@ function addDays(date: Date, days: number): Date {
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
   private readonly provider: AiProvider;
 
   constructor(
     private readonly prisma: PrismaService,
-    config: ConfigService,
+    private readonly config: ConfigService,
+    private readonly geo: GeoService,
   ) {
     this.provider = createAiProvider(config);
   }
@@ -75,69 +98,69 @@ export class AiService {
   }
 
   async generateTrip(userId: string, input: GenerateTripInput): Promise<GenerateTripResultDto> {
+    const requestId = generateRequestId();
     const remaining = await this.consumeGeneration(userId);
-    const plan = await this.provider.generateTrip(input.prompt);
+    this.logger.log(`[${requestId}] generateTrip start user=${userId} destination=${input.destination.name}`);
 
-    const start = addDays(new Date(), 14);
-    start.setUTCHours(0, 0, 0, 0);
-    const end = addDays(start, plan.dayCount - 1);
+    const destination = await new DestinationResolverService(this.geo).resolve(input.destination);
+    const intent = new IntentNormalizerService().normalize(input, destination);
 
-    const trip = await this.prisma.trip.create({
-      data: {
-        ownerId: userId,
-        title: plan.title,
-        destination: plan.destination,
-        coverImage: plan.coverImage,
-        budgetAmount: plan.budget,
-        budgetCurrency: "VND",
-        startDate: start,
-        endDate: end,
-        inviteCode: generateInviteCode(),
-        members: { create: { userId, role: "OWNER" } },
-        days: {
-          create: Array.from({ length: plan.dayCount }, (_, i) => ({
-            date: addDays(start, i),
-            order: i,
-          })),
-        },
-      },
-      include: { days: { orderBy: { order: "asc" } } },
-    });
+    const catalog = new PlaceCatalogService(this.prisma as never, this.config);
+    const [goongCandidates, catalogCandidates, research] = await Promise.all([
+      new PlaceProviderService(this.geo, this.config).findCandidates(intent),
+      catalog.findCandidates(intent),
+      new PlaceResearchService(new AiWebPlaceResearchProvider(this.config), this.config).collect(intent),
+    ]);
 
-    const placesPerDay = Math.max(Math.ceil(plan.places.length / plan.dayCount), 1);
-    const placeData = plan.places.map((p, i) => {
-      const dayIdx = Math.min(Math.floor(i / placesPerDay), plan.dayCount - 1);
-      return {
-        tripId: trip.id,
-        dayId: trip.days[dayIdx].id,
-        name: p.name,
-        lat: p.lat,
-        lng: p.lng,
-        category: p.category,
-        note: p.note ?? null,
-        cost: p.cost ?? null,
-        order: i % placesPerDay,
-      };
-    });
+    const candidatePool = [...goongCandidates, ...catalogCandidates, ...research.candidates];
+    const resolver = new PlaceResolverService(this.geo);
+    const resolved = await resolver.resolveCandidates(intent, candidatePool);
+    const enriched = new PlaceEnrichmentService().enrich(intent, resolved);
+    const deduped = new PlaceDeduplicationService().dedupe(enriched);
+    ensureEnoughPlaces(deduped, intent);
 
-    if (placeData.length > 0) {
-      await this.prisma.place.createMany({ data: placeData });
+    const linked = [];
+    for (const candidate of deduped) {
+      linked.push(await catalog.linkResolved(candidate));
     }
 
-    await this.prisma.checklistItem.createMany({
-      data: [
-        { tripId: trip.id, text: "Đặt vé xe/máy bay", type: "TODO" },
-        { tripId: trip.id, text: "Sạc dự phòng", type: "PACKING" },
-        { tripId: trip.id, text: "Áo khoác", type: "PACKING" },
-      ],
+    const scorer = new PlaceScoringService();
+    const scored = linked.map((candidate) => scorer.score(intent, candidate));
+    const selected = new PlaceSelectionService().select(intent, scored);
+    ensureEnoughPlaces(selected, intent);
+
+    const plannedDays = new DayPlannerService().planDays(intent, selected);
+    const optimized = await new PlanningRouteOptimizerService(this.geo).optimizeDays(intent, plannedDays);
+    const plan = await new TripNarratorService().narrate(intent, optimized.days);
+    const metadata = buildGenerationMetadata({
+      requestId,
+      goongCandidates: goongCandidates.length,
+      catalogCandidates: catalogCandidates.length,
+      aiWebCandidates: research.candidates.length,
+      resolvedCandidates: resolved.length,
+      dedupedCandidates: deduped.length,
+      selectedCandidates: selected.length,
+      fallbacks: [...research.fallbacks, ...plan.metadata.warnings],
+      warnings: [...research.warnings, ...plan.metadata.warnings],
+      usedWebResearch: research.usedWebResearch,
+      usedDistanceMatrix: optimized.usedDistanceMatrix,
+      pace: intent.pace,
+      selected,
     });
 
-    return {
-      tripId: trip.id,
-      title: trip.title,
-      destination: trip.destination,
+    this.logger.log(
+      `[${requestId}] candidates goong=${goongCandidates.length} catalog=${catalogCandidates.length} aiWeb=${research.candidates.length} resolved=${resolved.length} selected=${selected.length}`,
+    );
+
+    return new TripPersistenceService(this.prisma as never).persist({
+      userId,
       remainingGenerations: remaining,
-    };
+      inviteCode: generateInviteCode(),
+      intent,
+      days: optimized.days,
+      plan,
+      metadata,
+    });
   }
 
   async suggestPlaces(userId: string, tripId: string, input: SuggestPlacesInput): Promise<SuggestPlacesResultDto> {

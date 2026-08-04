@@ -56,6 +56,7 @@ export function DateInput({ id, value, onChange, required, className, min, max, 
         ref={inputRef}
         id={id}
         type="date"
+        lang="vi-VN"
         required={required}
         disabled={disabled}
         value={value}
