@@ -75,7 +75,7 @@ class RedisIoAdapter extends IoAdapter {
 }
 
 async function bootstrap() {
-  // rawBody is required for Stripe webhook signature verification.
+  // rawBody is available for payment webhooks that need provider signature verification.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   app.useBodyParser("json", { limit: "5mb" });
   app.useBodyParser("urlencoded", { limit: "5mb", extended: true });

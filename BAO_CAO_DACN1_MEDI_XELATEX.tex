@@ -1,0 +1,1573 @@
+% !TeX program = xelatex
+% !TeX TS-program = xelatex
+% !TeX spellcheck = vi_VN
+\documentclass[a4paper]{report}
+\usepackage{fontspec}
+\IfFontExistsTF{Times New Roman}{%
+  \setmainfont{Times New Roman}%
+}{%
+  \IfFontExistsTF{Tinos}{%
+    \setmainfont{Tinos}%
+  }{%
+    \setmainfont{TeX Gyre Termes}%
+  }%
+}
+\IfFontExistsTF{Arial}{\setsansfont{Arial}}{\setsansfont{TeX Gyre Heros}}
+\setmonofont{Latin Modern Mono}
+\usepackage[vietnamese]{babel}
+\usepackage{geometry}
+\geometry{left=2.5cm,right=1.5cm,top=2cm,bottom=2cm}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{calc}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{tikz}
+\usepackage{tocloft}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{ragged2e}
+\usepackage{indentfirst}
+\usepackage{etoolbox}
+\usetikzlibrary{arrows.meta,positioning,fit,shapes.geometric,calc}
+
+% Format theo mẫu báo cáo đã chỉnh.
+\makeatletter
+\renewcommand\normalsize{\@setfontsize\normalsize{13pt}{19.5pt}}
+\makeatother
+\normalsize
+\setstretch{1.5}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+\justifying
+\hypersetup{hidelinks,unicode=true}
+
+\definecolor{mediOrange}{HTML}{FF6B2C}
+\definecolor{mediPink}{HTML}{FF3D77}
+\definecolor{mediInk}{HTML}{2B2118}
+\definecolor{mediMuted}{HTML}{8A7563}
+\definecolor{mediPaper}{HTML}{FFF9F2}
+\definecolor{mediBorder}{HTML}{E8D7C5}
+\definecolor{codeBg}{HTML}{F8F8F8}
+
+\renewcommand{\contentsname}{MỤC LỤC}
+\renewcommand{\listtablename}{DANH MỤC BẢNG BIỂU}
+\renewcommand{\listfigurename}{DANH MỤC HÌNH ẢNH}
+\renewcommand{\tablename}{Bảng}
+\renewcommand{\figurename}{Hình}
+\renewcommand{\chaptername}{CHƯƠNG}
+\addto\captionsvietnamese{%
+  \renewcommand{\contentsname}{MỤC LỤC}%
+  \renewcommand{\listtablename}{DANH MỤC BẢNG BIỂU}%
+  \renewcommand{\listfigurename}{DANH MỤC HÌNH ẢNH}%
+  \renewcommand{\tablename}{Bảng}%
+  \renewcommand{\figurename}{Hình}%
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+
+\titleformat{\chapter}[display]
+  {\normalfont\bfseries\centering\fontsize{14}{18}\selectfont}
+  {CHƯƠNG \thechapter}
+  {0.25em}
+  {\MakeUppercase}
+\titlespacing*{\chapter}{0pt}{-12pt}{0.8cm}
+\titleformat{name=\chapter,numberless}[display]
+  {\normalfont\bfseries\centering\fontsize{14}{18}\selectfont}
+  {}{0pt}{\MakeUppercase}
+\titlespacing*{name=\chapter,numberless}{0pt}{-12pt}{0.7cm}
+\titleformat{\section}{\normalfont\bfseries\fontsize{13}{18}\selectfont}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\bfseries\fontsize{13}{18}\selectfont}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalfont\bfseries\fontsize{13}{18}\selectfont}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{0.55em}{0.25em}
+\titlespacing*{\subsection}{0pt}{0.45em}{0.2em}
+\titlespacing*{\subsubsection}{0pt}{0.35em}{0.15em}
+
+\renewcommand{\cfttoctitlefont}{\hfill\normalfont\bfseries\fontsize{14}{18}\selectfont}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftlottitlefont}{\hfill\normalfont\bfseries\fontsize{14}{18}\selectfont}
+\renewcommand{\cftafterlottitle}{\hfill}
+\renewcommand{\cftloftitlefont}{\hfill\normalfont\bfseries\fontsize{14}{18}\selectfont}
+\renewcommand{\cftafterloftitle}{\hfill}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{0.5cm}
+\setlength{\cftbeforelottitleskip}{0pt}
+\setlength{\cftafterlottitleskip}{0.5cm}
+\setlength{\cftbeforeloftitleskip}{0pt}
+\setlength{\cftafterloftitleskip}{0.5cm}
+\setcounter{tocdepth}{1}
+\setcounter{secnumdepth}{2}
+\renewcommand{\cftchappresnum}{CHƯƠNG~}
+\renewcommand{\cftchapaftersnum}{.\ }
+\setlength{\cftchapnumwidth}{2.7cm}
+
+\DeclareCaptionFont{captionfontsize}{\fontsize{13pt}{18pt}\selectfont}
+\captionsetup{font=captionfontsize,labelfont=bf,labelsep=colon,justification=centering}
+\setlength{\arrayrulewidth}{0.45pt}
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.08}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+\AtBeginEnvironment{longtable}{\setstretch{1.15}\setlength{\parindent}{0pt}}
+\setlist[itemize]{leftmargin=1.3cm,itemsep=0pt,topsep=0pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.3cm,itemsep=0pt,topsep=0pt,parsep=0pt}
+
+% Pandoc helpers.
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>0.9\linewidth 0.9\linewidth\else\Gin@nat@width\fi}
+\makeatother
+\setkeys{Gin}{width=0.9\textwidth,keepaspectratio}
+
+\lstdefinestyle{plantuml}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codeBg},
+  frame=single,
+  rulecolor=\color{mediBorder},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  captionpos=b,
+  xleftmargin=0.4cm,
+  xrightmargin=0.4cm
+}
+
+\lstdefinestyle{code}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codeBg},
+  frame=single,
+  rulecolor=\color{mediBorder},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false
+}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{L}[1]{>{\setlength{\parindent}{0pt}\RaggedRight\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\setlength{\parindent}{0pt}\Centering\arraybackslash}p{#1}}
+\newcolumntype{J}[1]{>{\setlength{\parindent}{0pt}\RaggedRight\arraybackslash}p{#1}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\tikzset{
+  box/.style={draw=mediInk, rounded corners=2pt, fill=white, align=center, font=\sffamily\footnotesize, inner sep=4pt},
+  softbox/.style={draw=mediBorder, rounded corners=2pt, fill=mediPaper, align=center, font=\sffamily\footnotesize, inner sep=4pt},
+  entitybox/.style={draw=mediInk, rounded corners=1pt, fill=white, align=left, font=\sffamily\scriptsize, inner sep=4pt, minimum width=3.1cm},
+  usecasebox/.style={ellipse, draw=mediInk, fill=white, align=center, font=\sffamily\scriptsize, inner sep=3pt, minimum width=3.1cm, minimum height=0.85cm},
+  actorbox/.style={draw=mediInk, fill=mediPaper, align=center, font=\sffamily\scriptsize, inner sep=4pt, minimum width=2.2cm},
+  lifelinebox/.style={draw=mediInk, fill=white, align=center, font=\sffamily\scriptsize, inner sep=4pt, minimum width=2.4cm},
+  flowarrow/.style={-{Latex[length=2mm]}, draw=mediInk, line width=0.45pt},
+  relarrow/.style={-{Latex[length=2mm]}, draw=mediInk, line width=0.45pt},
+  dashedrel/.style={-{Latex[length=2mm]}, draw=mediMuted, dashed, line width=0.45pt}
+}
+
+\newcommand{\ProjectName}{Mê Đi}
+\newcommand{\ProjectTitle}{\ProjectName{} - Nền tảng lập kế hoạch du lịch nhóm tích hợp bản đồ, AI và chia sẻ lịch trình}
+\newcommand{\StudentList}{Huỳnh Văn Gia Bảo - 22IT.EB005}
+\newcommand{\ClassName}{Đồ án chuyên ngành 1 (IT)}
+\newcommand{\AdvisorName}{ThS. Ngô Lê Quân}
+\newcommand{\ReportMonth}{Đà Nẵng, tháng 8 năm 2026}
+
+\newcommand{\uinote}[2]{%
+  \begin{center}
+  \fcolorbox{mediOrange}{mediPaper}{%
+    \begin{minipage}{0.9\textwidth}
+      \textbf{Ghi chú bổ sung giao diện web: #1}\par
+      #2
+    \end{minipage}
+  }
+  \end{center}
+}
+
+\newcommand{\frontchapter}[1]{\chapter*{#1}\phantomsection\addcontentsline{toc}{chapter}{#1}}
+
+\makeatletter
+\newcommand{\combinedlists}{%
+  \clearpage
+  \chapter*{DANH MỤC BẢNG BIỂU VÀ HÌNH ẢNH}%
+  \phantomsection\addcontentsline{toc}{chapter}{DANH MỤC BẢNG BIỂU VÀ HÌNH ẢNH}%
+  \vspace{-0.2cm}%
+  {\bfseries DANH MỤC BẢNG BIỂU}\par\vspace{0.15cm}%
+  \@starttoc{lot}%
+  \vspace{0.35cm}%
+  {\bfseries DANH MỤC HÌNH ẢNH}\par\vspace{0.15cm}%
+  \@starttoc{lof}%
+}
+\makeatother
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  {\large TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN VÀ\par}
+  {\large TRUYỀN THÔNG VIỆT - HÀN\par}
+  {\large KHOA KHOA HỌC MÁY TÍNH\par}
+  \vspace{2.5cm}
+
+  {\Large\bfseries ĐỒ ÁN CHUYÊN NGÀNH 1\par}
+  \vspace{1.2cm}
+  {\Large\bfseries ĐỀ TÀI:\par}
+  \vspace{0.4cm}
+  {\Large\bfseries \ProjectTitle\par}
+
+  \vfill
+  \begin{tabular}{P{5cm}P{9cm}}
+    Sinh viên thực hiện: & \StudentList \\
+    Lớp: & \ClassName \\
+    Giảng viên hướng dẫn: & \AdvisorName \\
+  \end{tabular}
+
+  \vfill
+  {\large \ReportMonth\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+
+\frontchapter{LỜI CẢM ƠN}
+
+Trước hết, em xin gửi lời cảm ơn chân thành đến giảng viên hướng dẫn \AdvisorName{} đã định hướng, góp ý và hỗ trợ em trong quá trình thực hiện đồ án chuyên ngành. Những nhận xét của thầy giúp em nhìn rõ hơn cách phân tích bài toán, tổ chức kiến trúc hệ thống và trình bày kết quả theo đúng yêu cầu học thuật.
+
+Em cũng xin cảm ơn quý thầy cô Khoa Khoa học Máy tính, Trường Đại học Công nghệ Thông tin và Truyền thông Việt - Hàn đã trang bị kiến thức nền tảng về lập trình web, cơ sở dữ liệu, phân tích thiết kế hệ thống, bảo mật và kiểm thử phần mềm. Đây là cơ sở quan trọng để em có thể xây dựng sản phẩm \ProjectName{} theo hướng ứng dụng thực tế.
+
+Do thời gian và kinh nghiệm còn hạn chế, báo cáo không tránh khỏi thiếu sót. Em rất mong nhận được ý kiến đóng góp của thầy cô để hoàn thiện sản phẩm tốt hơn.
+
+\begin{flushright}
+  Sinh viên thực hiện\par
+  \vspace{1cm}
+  \StudentList
+\end{flushright}
+
+\frontchapter{NHẬN XÉT CỦA GIẢNG VIÊN HƯỚNG DẪN}
+
+\vspace{0.5cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+\vspace{0.45cm}
+\hrule
+
+\clearpage
+\tableofcontents
+\combinedlists
+\clearpage
+\pagenumbering{arabic}
+
+\frontchapter{MỞ ĐẦU}
+
+\section*{1. Tính cấp thiết của đề tài}
+\addcontentsline{toc}{section}{1. Tính cấp thiết của đề tài}
+
+Du lịch theo nhóm thường phát sinh nhiều vấn đề trước khi chuyến đi bắt đầu: mỗi thành viên đề xuất địa điểm ở nhiều kênh khác nhau, lịch trình bị phân tán trong tin nhắn, bản đồ phải mở riêng, chi phí tạm ứng khó theo dõi, danh sách việc cần chuẩn bị không đồng bộ. Khi số ngày đi và số thành viên tăng lên, việc thống nhất lịch trình trở thành một bài toán tổ chức dữ liệu, cộng tác và ra quyết định chứ không chỉ là thao tác ghi chú đơn giản.
+
+Các công cụ phổ biến như Google Maps, Google Sheets, nhóm chat hoặc ứng dụng ghi chú có thể xử lý từng phần riêng lẻ, nhưng chưa tạo ra một luồng thống nhất từ tạo chuyến đi, mời bạn bè, sắp xếp điểm đến theo ngày, xem bản đồ, tối ưu lộ trình, ghi chi phí, chia tiền, checklist, đến chia sẻ hoặc nhân bản lịch trình. Vì vậy người dùng dễ gặp các tình huống:
+
+\begin{itemize}
+  \item Thông tin địa điểm, chi phí, booking và việc cần làm nằm ở nhiều nơi khác nhau.
+  \item Người lên lịch phải tự tổng hợp ý kiến, tự kiểm tra cung đường và tự cập nhật cho cả nhóm.
+  \item Khi có thay đổi ở phút cuối, các thành viên còn lại không biết ngay hoặc phải đọc lại nhiều tin nhắn.
+  \item Chi phí nhóm thiếu minh bạch, đặc biệt với các khoản một người trả trước nhưng nhiều người cùng dùng.
+  \item Các lịch trình hay sau chuyến đi khó được tái sử dụng hoặc chia sẻ cho người khác.
+\end{itemize}
+
+Đề tài \textbf{\ProjectTitle} được xây dựng nhằm giải quyết các vấn đề trên bằng một hệ thống web tập trung. Ứng dụng cung cấp không gian lập kế hoạch du lịch nhóm theo mô hình cộng tác: mỗi chuyến đi có lịch theo ngày, địa điểm gắn tọa độ, bản đồ trực quan, chi phí chia đều, checklist, đặt chỗ, chia sẻ công khai và khả năng dùng AI để gợi ý hoặc tạo lịch trình. Với cách tiếp cận này, đồ án có tính thực tế cao và phù hợp với xu hướng sản phẩm du lịch số tại Việt Nam.
+
+\section*{2. Mục tiêu và nhiệm vụ nghiên cứu}
+\addcontentsline{toc}{section}{2. Mục tiêu và nhiệm vụ nghiên cứu}
+
+\subsection*{2.1. Mục tiêu nghiên cứu}
+\addcontentsline{toc}{subsection}{2.1. Mục tiêu nghiên cứu}
+
+Mục tiêu của đồ án là xây dựng một nền tảng web giúp người dùng lập kế hoạch du lịch theo nhóm một cách trực quan, cộng tác được và có khả năng mở rộng. Hệ thống tập trung vào các mục tiêu cụ thể:
+
+\begin{itemize}
+  \item Thiết kế luồng quản lý chuyến đi gồm tạo chuyến, chỉnh sửa thông tin, quản lý thành viên và phân quyền theo vai trò trong chuyến.
+  \item Xây dựng bảng lịch trình theo ngày, hỗ trợ thêm địa điểm, sắp xếp bằng kéo thả, lưu địa điểm chưa xếp ngày và đồng bộ với bản đồ.
+  \item Tích hợp bản đồ, geocoding và route để người dùng nhìn được vị trí, marker, đường đi và thời gian di chuyển ước tính.
+  \item Xây dựng module chi phí nhóm: ghi khoản chi, chia cho thành viên, tính cân bằng, đề xuất khoản chuyển tiền tối giản và ghi nhận thanh toán.
+  \item Xây dựng checklist việc cần làm và đồ cần mang để hỗ trợ chuẩn bị chuyến đi.
+  \item Hỗ trợ cộng tác thời gian thực qua WebSocket để các thay đổi quan trọng trên chuyến đi được cập nhật cho thành viên đang xem.
+  \item Tích hợp AI để tạo lịch trình từ yêu cầu người dùng, gợi ý địa điểm và tối ưu thứ tự tham quan.
+  \item Bổ sung các luồng nâng cao ở mức vừa phải: chia sẻ lịch trình công khai, remix lịch trình và import booking từ nội dung xác nhận.
+\end{itemize}
+
+\subsection*{2.2. Nhiệm vụ nghiên cứu}
+\addcontentsline{toc}{subsection}{2.2. Nhiệm vụ nghiên cứu}
+
+\begin{itemize}
+  \item Nghiên cứu Next.js App Router, React, TypeScript, Tailwind CSS, TanStack Query, MapLibre GL và dnd-kit để xây dựng giao diện web tương tác.
+  \item Nghiên cứu NestJS, Prisma, PostgreSQL, Redis, Socket.IO và JWT để xây dựng backend REST API kết hợp realtime.
+  \item Phân tích bài toán nghiệp vụ lập kế hoạch du lịch nhóm, xác định tác nhân, use case, yêu cầu chức năng và yêu cầu phi chức năng.
+  \item Thiết kế cơ sở dữ liệu quan hệ cho các miền: người dùng, chuyến đi, ngày, địa điểm, thành viên, chi phí, checklist, đính kèm, thanh toán, AI và guide.
+  \item Thiết kế dữ liệu và DTO dùng chung giữa web frontend và backend thông qua package \texttt{@medi/types}.
+  \item Xây dựng các kịch bản demo chức năng theo từng màn hình và từng luồng nghiệp vụ chính.
+  \item Kiểm thử bằng các lệnh build/test của monorepo và kiểm thử thủ công các luồng người dùng quan trọng.
+\end{itemize}
+
+\section*{3. Đối tượng và phạm vi nghiên cứu}
+\addcontentsline{toc}{section}{3. Đối tượng và phạm vi nghiên cứu}
+
+\subsection*{3.1. Đối tượng nghiên cứu}
+\addcontentsline{toc}{subsection}{3.1. Đối tượng nghiên cứu}
+
+Đối tượng nghiên cứu của đề tài gồm:
+
+\begin{itemize}
+  \item Người dùng có nhu cầu lập kế hoạch du lịch cá nhân hoặc theo nhóm.
+  \item Quy trình cộng tác trong một chuyến đi: mời thành viên, phân vai, cùng chỉnh sửa lịch trình, cập nhật chi phí và checklist.
+  \item Dữ liệu du lịch có cấu trúc: chuyến đi, ngày đi, điểm đến, địa điểm, chi phí, booking, guide.
+  \item Công nghệ bản đồ, realtime và AI ứng dụng vào việc đề xuất lịch trình.
+\end{itemize}
+
+\subsection*{3.2. Phạm vi chức năng}
+\addcontentsline{toc}{subsection}{3.2. Phạm vi chức năng}
+
+Phạm vi báo cáo tập trung vào ứng dụng dành cho người dùng cuối:
+
+\begin{itemize}
+  \item Web app: trang chủ, đăng ký, đăng nhập, danh sách chuyến đi, chi tiết chuyến đi, AI planner, Explore, trang public trip và settings.
+  \item Backend API: xác thực, chuyến đi, lịch trình, chi phí, checklist, đính kèm, bản đồ, realtime, AI, public sharing và import booking.
+  \item Mobile: scaffold Expo, đăng nhập và xem danh sách chuyến đi ở mức MVP.
+  \item Dữ liệu: PostgreSQL là nguồn lưu trữ chính; Redis dùng cho hạ tầng realtime; các cache trong ứng dụng hỗ trợ geocoding và route.
+\end{itemize}
+
+Các nội dung vận hành nội bộ không được đưa vào phần phân tích, thiết kế và showcase của báo cáo này để giữ đúng phạm vi sản phẩm người dùng.
+
+\section*{4. Phương pháp nghiên cứu}
+\addcontentsline{toc}{section}{4. Phương pháp nghiên cứu}
+
+Đề tài sử dụng kết hợp các phương pháp:
+
+\begin{itemize}
+  \item \textbf{Phân tích nghiệp vụ}: khảo sát vấn đề lập kế hoạch du lịch nhóm, tách luồng thao tác thành các use case độc lập.
+  \item \textbf{Thiết kế hướng miền}: xác định các thực thể trung tâm như User, Trip, Day, Place, Expense, ChecklistItem, Attachment, Guide và PaymentIntent.
+  \item \textbf{Phát triển lặp}: triển khai từng module độc lập, sau đó tích hợp thành luồng hoàn chỉnh trên frontend và backend.
+  \item \textbf{Kiểm thử thực nghiệm}: kiểm tra API, build web, kiểm thử các helper xử lý auth, date, public trip và thao tác chuyến đi.
+  \item \textbf{Đánh giá theo kịch bản}: mô tả từng showcase feature từ góc nhìn người dùng, kèm điều kiện trước, luồng chính, kết quả mong đợi và dữ liệu liên quan.
+\end{itemize}
+
+\chapter{CƠ SỞ LÝ THUYẾT}
+
+\section{Tổng quan phát triển ứng dụng web du lịch}
+
+Ứng dụng du lịch hiện đại không chỉ hiển thị thông tin điểm đến mà còn cần hỗ trợ người dùng ra quyết định và phối hợp nhóm. Một hệ thống lập kế hoạch du lịch nhóm thường gồm bốn lớp giá trị:
+
+\begin{itemize}
+  \item \textbf{Tổ chức dữ liệu}: gom tên chuyến đi, thời gian, địa điểm, thành viên, chi phí và ghi chú vào cùng một không gian.
+  \item \textbf{Trực quan địa lý}: bản đồ, tọa độ, marker, lộ trình và thời gian di chuyển giúp người dùng đánh giá tính hợp lý của lịch trình.
+  \item \textbf{Cộng tác}: nhiều người cùng tham gia, mỗi người có quyền xem hoặc chỉnh sửa, thay đổi được đồng bộ kịp thời.
+  \item \textbf{Tự động hóa}: AI, geocoding, route optimization và import booking giúp giảm thao tác thủ công.
+\end{itemize}
+
+\ProjectName{} được xây dựng theo hướng SaaS du lịch: tài khoản miễn phí vẫn dùng được các chức năng lõi, gói PRO mở thêm các công cụ nâng cao như tối ưu route, xuất Google Maps, offline snapshot và AI không giới hạn.
+
+\section{Next.js, React và TypeScript}
+
+Frontend web sử dụng Next.js App Router kết hợp React và TypeScript. Next.js cung cấp mô hình routing theo thư mục, hỗ trợ server rendering cho trang public trip và client rendering cho các màn hình tương tác cao như bảng lịch trình kéo thả. React giúp chia giao diện thành các component nhỏ: header, trip card, itinerary board, map, expense tab, checklist tab, member modal. TypeScript giúp kiểm soát kiểu dữ liệu giữa UI, API client và DTO dùng chung.
+
+Các điểm phù hợp với đề tài:
+
+\begin{itemize}
+  \item App Router giúp tổ chức route rõ ràng: \texttt{/trips}, \texttt{/trips/:id}, \texttt{/ai}, \texttt{/explore}, \texttt{/t/:id}.
+  \item TanStack Query quản lý fetch/cache/invalidate dữ liệu sau mutation, phù hợp với các thao tác cập nhật lịch trình, chi phí, checklist.
+  \item Tailwind CSS hỗ trợ xây dựng giao diện nhanh, thống nhất màu sắc và responsive.
+  \item Component hóa giúp các tab trong trang chi tiết chuyến đi hoạt động độc lập nhưng vẫn dùng chung dữ liệu TripDetail.
+\end{itemize}
+
+\section{NestJS, REST API và kiến trúc module}
+
+Backend sử dụng NestJS vì framework này hỗ trợ kiến trúc module rõ ràng, dependency injection, guard, controller, service và WebSocket gateway. Mỗi miền nghiệp vụ được tách thành module riêng: Auth, Trips, Itinerary, Expenses, Checklist, Attachments, Geo, AI, Import và Realtime.
+
+Luồng xử lý chuẩn của một request:
+
+\begin{enumerate}
+  \item Client gửi request đến controller theo endpoint REST.
+  \item Guard kiểm tra JWT nếu endpoint yêu cầu đăng nhập.
+  \item Zod pipe kiểm tra dữ liệu đầu vào theo schema trong \texttt{@medi/types}.
+  \item Service xử lý nghiệp vụ, kiểm tra quyền truy cập chuyến đi, thao tác với Prisma.
+  \item Service trả DTO cho controller; controller trả JSON cho frontend.
+  \item Nếu thao tác ảnh hưởng dữ liệu dùng chung, realtime gateway phát sự kiện để client khác refetch.
+\end{enumerate}
+
+\section{Prisma và PostgreSQL}
+
+PostgreSQL được dùng làm cơ sở dữ liệu quan hệ chính. Prisma đóng vai trò ORM, giúp định nghĩa schema, migration, quan hệ và truy vấn kiểu an toàn. Các quan hệ quan trọng của hệ thống gồm:
+
+\begin{itemize}
+  \item Một người dùng có thể sở hữu nhiều chuyến đi và tham gia nhiều chuyến đi.
+  \item Một chuyến đi có nhiều ngày, nhiều địa điểm, nhiều thành viên, nhiều chi phí, nhiều checklist và nhiều đính kèm.
+  \item Chi phí có người trả và danh sách người cùng chia thông qua bảng trung gian nhiều-nhiều.
+  \item Guide được tạo từ một chuyến đi công khai và có thể được người dùng khác mua/lấy để tạo bản sao chuyến đi.
+  \item Job AI lưu input, trạng thái, tiến độ, kết quả và lỗi để frontend có thể poll tiến độ.
+\end{itemize}
+
+\section{Socket.IO và realtime collaboration}
+
+Socket.IO được dùng cho cộng tác thời gian thực trong phạm vi một chuyến đi. Client kết nối namespace \texttt{/trips} bằng access token, sau đó join room \texttt{trip:<tripId>} nếu là thành viên của chuyến. Khi một thành viên cập nhật lịch trình, chi phí, checklist hoặc thành viên, server phát sự kiện dạng coarse-grained như \texttt{itinerary:changed}, \texttt{expenses:changed}, \texttt{checklist:changed}. Client nhận sự kiện sẽ invalidate query tương ứng để lấy dữ liệu mới.
+
+Cách này đơn giản hơn việc đồng bộ từng field chi tiết, nhưng vẫn đủ hiệu quả cho MVP vì:
+
+\begin{itemize}
+  \item Giữ backend realtime ít phụ thuộc vào cấu trúc UI.
+  \item Tránh conflict phức tạp khi nhiều người thao tác cùng lúc.
+  \item Tận dụng cache/invalidate sẵn có của TanStack Query.
+\end{itemize}
+
+\section{Bản đồ, geocoding và tối ưu lộ trình}
+
+\ProjectName{} sử dụng MapLibre GL ở frontend để hiển thị bản đồ, marker theo ngày và đường di chuyển. Backend cung cấp GeoService với hai hướng:
+
+\begin{itemize}
+  \item Nominatim/OpenStreetMap cho môi trường phát triển không cần khóa API.
+  \item Goong cho dữ liệu Việt Nam tốt hơn, bao gồm autocomplete, place detail, distance matrix và directions polyline.
+\end{itemize}
+
+Tối ưu lộ trình dựa trên tọa độ các địa điểm trong ngày. Nếu có dữ liệu Distance Matrix, hệ thống dùng thời gian/độ dài đường đi thật; nếu không, hệ thống fallback sang ước tính Haversine để không làm đứt luồng người dùng.
+
+\section{AI planner và xử lý bất đồng bộ}
+
+AI planner trong \ProjectName{} không tạo lịch trình trực tiếp trong một request đồng bộ dài. Backend tạo bản ghi \texttt{AiTripGenerationJob}, trả \texttt{generationId}, sau đó worker xử lý pipeline theo từng stage:
+
+\begin{enumerate}
+  \item Research điểm đến, điểm xuất phát và nguồn gợi ý.
+  \item Xác minh/chuẩn hóa địa điểm qua Goong hoặc catalog.
+  \item Loại trùng, chấm điểm theo sở thích, ngân sách, khoảng cách và độ đa dạng.
+  \item Phân bổ địa điểm vào từng ngày.
+  \item Tối ưu route từng ngày.
+  \item Sinh tiêu đề, checklist và metadata.
+  \item Lưu Trip, Day, Place, ChecklistItem vào cơ sở dữ liệu.
+\end{enumerate}
+
+Frontend poll \texttt{/ai/generations/:id} để hiển thị tiến độ. Cách này giúp trải nghiệm ổn định hơn khi upstream AI hoặc geocoding chậm.
+
+\section{PWA, offline snapshot và mobile scaffold}
+
+Web app hỗ trợ PWA ở mức cache cơ bản. Với tài khoản PRO, trang chi tiết chuyến đi lưu snapshot vào local storage để người dùng có thể xem lại nội dung khi mất mạng. Bên cạnh web app, repo có scaffold Expo mobile với đăng nhập email/password và danh sách chuyến đi dạng read-only MVP. Điều này cho thấy kiến trúc backend và DTO dùng chung đã được chuẩn bị để mở rộng đa nền tảng.
+
+\chapter{PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG}
+
+\section{Bối cảnh nghiệp vụ}
+
+\subsection{Bài toán cần giải quyết}
+
+Người dùng thường bắt đầu một chuyến đi bằng vài câu hỏi đơn giản: đi đâu, đi ngày nào, ngân sách bao nhiêu, ai đi cùng, ăn gì, ở đâu và đi theo thứ tự nào. Tuy nhiên khi triển khai thực tế, các câu hỏi này sinh ra nhiều dữ liệu liên quan:
+
+\begin{itemize}
+  \item Thời gian chuyến đi quyết định số cột ngày trong lịch trình.
+  \item Mỗi địa điểm cần tên, loại, địa chỉ, tọa độ, ghi chú, chi phí dự kiến và vị trí trong ngày.
+  \item Thành viên có quyền khác nhau: chủ chuyến đi, người được chỉnh sửa hoặc người chỉ xem.
+  \item Mỗi khoản chi cần người trả, số tiền, danh mục và danh sách người cùng chia.
+  \item Booking có thể tạo thêm địa điểm, file/đường dẫn xác nhận và khoản chi tương ứng.
+  \item Lịch trình công khai có thể được người khác xem hoặc clone để tái sử dụng.
+\end{itemize}
+
+Vì vậy hệ thống cần mô hình hóa rõ ràng quan hệ giữa chuyến đi, thành viên, ngày, địa điểm, chi phí và các dữ liệu phụ trợ. Nếu không, các chức năng như kéo thả lịch trình, chia tiền, public remix hoặc AI tạo chuyến đi sẽ dễ bị lệch dữ liệu.
+
+\subsection{Mục tiêu hệ thống}
+
+Hệ thống \ProjectName{} hướng đến bốn mục tiêu chính. Thứ nhất, gom dữ liệu chuyến đi vào một nơi để người dùng không phải dùng rời rạc bản đồ, ghi chú, bảng tính và nhóm chat. Thứ hai, hỗ trợ cộng tác nhóm thông qua thành viên, vai trò và cập nhật realtime. Thứ ba, giảm công sức lập lịch bằng geocoding, bản đồ, tối ưu lộ trình và AI planner. Thứ tư, minh bạch chi phí thông qua sổ chi tiêu, cân bằng từng người và gợi ý khoản chuyển tiền tối giản.
+
+Ở phạm vi DACN1, báo cáo tập trung vào các chức năng lõi phục vụ lập kế hoạch chuyến đi. Các hướng thương mại hóa được xem là phần mở rộng sau MVP nên không đi sâu trong nội dung chính.
+
+\subsection{Phạm vi nghiệp vụ cần số hóa}
+
+Phạm vi nghiệp vụ của hệ thống được xác định từ quá trình một nhóm người chuẩn bị chuyến đi thực tế. Trước chuyến đi, người tổ chức cần tạo kế hoạch sơ bộ, xác định thời gian, mời người tham gia, chọn điểm đến và ước lượng ngân sách. Trong khi lập kế hoạch, cả nhóm cần thêm địa điểm, thay đổi thứ tự tham quan, ghi chú thời gian, xem quãng đường, so sánh chi phí và chuẩn bị checklist. Sau khi kế hoạch tương đối ổn định, nhóm có thể chia sẻ lịch trình cho người khác hoặc dùng lại lịch trình đó ở lần sau.
+
+Nếu triển khai bằng nhiều công cụ rời rạc, dữ liệu dễ bị phân tán: vị trí nằm trong ứng dụng bản đồ, chi phí nằm trong bảng tính, ý kiến thành viên nằm trong nhóm chat, booking nằm trong email. Vì vậy \ProjectName{} được thiết kế như một không gian thống nhất cho từng Trip. Mọi dữ liệu con đều bám vào Trip để người dùng chỉ cần mở một trang chi tiết là có thể theo dõi toàn bộ kế hoạch.
+
+\subsection{Tiêu chí thiết kế hệ thống}
+
+Các quyết định thiết kế trong đồ án bám theo năm tiêu chí:
+
+\begin{itemize}
+  \item \textbf{Dữ liệu tập trung}: Trip là gốc của lịch trình, thành viên, địa điểm, chi phí, checklist và booking.
+  \item \textbf{Cộng tác rõ quyền}: mỗi thao tác thay đổi dữ liệu phải kiểm tra người dùng có thuộc chuyến đi và có role phù hợp hay không.
+  \item \textbf{Trải nghiệm trực quan}: lịch trình theo ngày phải đồng bộ với bản đồ, route và thông tin chi phí liên quan.
+  \item \textbf{Tự động hóa vừa đủ}: AI, geocoding, import booking và tối ưu route hỗ trợ giảm thao tác lặp, nhưng người dùng vẫn kiểm soát kết quả cuối.
+  \item \textbf{Dễ mở rộng}: backend chia module, frontend chia route/component, DTO dùng chung để giảm lệch contract giữa các phần.
+\end{itemize}
+
+\section{Đối tượng người dùng}
+
+Báo cáo xác định ba nhóm người dùng chính. Khách chưa đăng nhập có thể xem thông tin giới thiệu và một số lịch trình công khai nhưng cần đăng nhập để tạo hoặc sao chép chuyến đi. Người dùng đăng nhập có thể tạo chuyến, thêm địa điểm, quản lý chi phí, checklist, booking và dùng AI trong giới hạn gói. Thành viên trong chuyến đi được phân vai OWNER, EDITOR hoặc VIEWER để kiểm soát phạm vi chỉnh sửa dữ liệu.
+
+\subsection{Chân dung người dùng và nhu cầu}
+
+\textbf{Người tổ chức chuyến đi} thường là người tạo Trip, nhập thông tin ban đầu và mời các thành viên. Nhóm này cần thao tác nhanh, nhìn được bức tranh tổng thể và kiểm soát quyền chỉnh sửa để tránh lịch trình bị thay đổi tùy tiện.
+
+\textbf{Thành viên cùng tham gia} cần xem lịch trình, đề xuất địa điểm, kiểm tra chi phí phải trả, tick checklist và cập nhật thông tin khi kế hoạch thay đổi. Với nhóm này, khả năng realtime và giao diện dễ hiểu quan trọng hơn các thiết lập phức tạp.
+
+\textbf{Người tham khảo lịch trình công khai} không nhất thiết tham gia chuyến đi gốc. Họ quan tâm đến việc xem route, ngày đi, địa điểm nổi bật, ngân sách tham khảo và có thể clone lịch trình thành chuyến riêng. Do đó dữ liệu public cần đủ hữu ích nhưng phải loại bỏ thông tin riêng tư của nhóm ban đầu.
+
+\subsection{Ma trận quyền theo phạm vi chuyến đi}
+
+\ProjectName{} không đặt trọng tâm vào quyền vận hành toàn hệ thống. Quyền được phân tích ở phạm vi từng chuyến đi vì đây là nơi phát sinh dữ liệu nghiệp vụ chính. Cùng một người dùng có thể là OWNER ở chuyến này, EDITOR ở chuyến khác và VIEWER ở chuyến còn lại. Do đó backend không chỉ kiểm tra ``đã đăng nhập hay chưa'', mà còn phải kiểm tra membership của người dùng trong Trip đang thao tác.
+
+\begin{longtable}{|P{4.2cm}|C{1.45cm}|C{1.45cm}|C{1.45cm}|P{6.2cm}|}
+\caption{Ma trận quyền thao tác trong một chuyến đi}\\
+\hline
+\textbf{Thao tác} & \textbf{OWNER} & \textbf{EDITOR} & \textbf{VIEWER} & \textbf{Ghi chú kiểm soát}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Thao tác} & \textbf{OWNER} & \textbf{EDITOR} & \textbf{VIEWER} & \textbf{Ghi chú kiểm soát}\\
+\hline
+\endhead
+Xem chi tiết chuyến đi & Có & Có & Có & Yêu cầu là thành viên của trip hoặc trip ở chế độ public/link với DTO đã lọc dữ liệu.\\
+\hline
+Sửa thông tin chuyến & Có & Có & Không & Backend yêu cầu role tối thiểu EDITOR.\\
+\hline
+Xóa chuyến đi & Có & Không & Không & Chỉ chủ chuyến có quyền xóa toàn bộ dữ liệu phụ thuộc.\\
+\hline
+Thêm/sửa/xóa địa điểm & Có & Có & Không & Mỗi Place phải thuộc đúng tripId hiện tại.\\
+\hline
+Kéo thả lịch trình & Có & Có & Không & Reorder theo danh sách moves, kiểm tra từng placeId và dayId.\\
+\hline
+Tối ưu route PRO & Có & Có & Không & Ngoài quyền EDITOR còn cần điều kiện gói PRO.\\
+\hline
+Mời thành viên & Có & Có & Không & Người được mời phải có tài khoản nếu mời bằng email.\\
+\hline
+Đổi vai trò thành viên & Có & Không & Không & Không cho chuyển role chủ sở hữu tùy tiện.\\
+\hline
+Rời chuyến & Có điều kiện & Có & Có & Chủ chuyến không được rời nếu làm mất OWNER của trip.\\
+\hline
+Ghi chi phí và settlement & Có & Có & Không & Payer và splitWith phải thuộc danh sách thành viên.\\
+\hline
+Checklist và booking & Có & Có & Không & Attachment có thể gắn trip hoặc place thuộc cùng trip.\\
+\hline
+Bật chia sẻ public/link & Có & Có & Không & Public DTO không chứa email thành viên và inviteCode.\\
+\hline
+Đăng guide từ trip public & Có & Có & Không & Trip phải public và người thao tác phải có quyền chỉnh sửa.\\
+\hline
+\end{longtable}
+
+Ma trận này giúp UI quyết định hiển thị nút nào, đồng thời giúp backend đặt guard ở tầng service. Frontend có thể ẩn nút để trải nghiệm rõ ràng hơn, nhưng backend vẫn là lớp kiểm soát cuối cùng vì mọi request đều có thể được gọi ngoài giao diện.
+
+\section{Phân tích yêu cầu}
+
+\subsection{Yêu cầu chức năng chính}
+
+Phạm vi chức năng được gom theo các miền nghiệp vụ thay vì liệt kê thành bảng dài. Nhóm tài khoản gồm đăng ký, đăng nhập, refresh token, xem/cập nhật hồ sơ và đổi mật khẩu với tài khoản local. Nhóm chuyến đi gồm tạo chuyến, xem danh sách, cập nhật thông tin, đồng bộ số ngày theo khoảng startDate-endDate và xóa chuyến theo quyền.
+
+Nhóm lịch trình là phần trọng tâm của hệ thống: thêm địa điểm, sửa thông tin, xóa địa điểm, lưu địa điểm chưa xếp ngày, kéo thả giữa các ngày và đồng bộ marker trên bản đồ. Nhóm cộng tác cho phép mời thành viên, tham gia bằng link, đổi vai trò và nhận cập nhật realtime. Nhóm chi phí gồm tạo khoản chi, chọn người trả, chọn người cùng chia, tính tổng ngân sách, tính net balance và ghi nhận settlement. Nhóm checklist và booking giúp người dùng chuẩn bị chuyến đi, lưu xác nhận đặt chỗ và tự động sinh chi phí nếu booking có số tiền.
+
+Các chức năng mở rộng gồm chia sẻ public, clone lịch trình, AI planner và AI gợi ý địa điểm. Trong báo cáo này, các chức năng mở rộng được trình bày ngắn gọn để làm rõ khả năng phát triển của sản phẩm, không đi sâu như các chức năng lõi.
+
+\subsection{Yêu cầu phi chức năng}
+
+Hệ thống cần bảo đảm xác thực an toàn bằng access token và refresh token đã hash; phân quyền mọi dữ liệu con theo TripMember; giữ tính nhất quán bằng foreign key, cascade, SetNull và transaction; phản hồi lỗi tiếng Việt đủ rõ để UI hiển thị trực tiếp. Về hiệu năng, frontend dùng TanStack Query để cache/refetch dữ liệu, realtime chỉ phát event ở mức tổng quát để tránh đồng bộ từng field phức tạp. Các luồng chậm như AI planner được xử lý bất đồng bộ bằng job, có stage, progress và errorMessage để người dùng theo dõi.
+
+\subsection{Quy tắc nghiệp vụ cốt lõi}
+
+Một chuyến đi luôn phải có TripMember OWNER cho người tạo. Ngày về không được trước ngày đi; khi khoảng ngày thay đổi, hệ thống đồng bộ lại Day và đưa Place ở ngày bị xóa về vùng chưa xếp. Địa điểm chỉ được gắn với Day thuộc cùng Trip, còn Place.dayId có thể null để lưu ý tưởng chưa xếp ngày. Chi phí địa điểm phải đồng bộ với sổ chi tiêu thông qua Expense liên kết; payer và splitWith luôn phải là thành viên của chuyến. Settlement không cho phép tự chuyển cho chính mình. PublicTripDto không được lộ email thành viên, inviteCode hoặc dữ liệu booking riêng tư. AI với tài khoản FREE có giới hạn theo ngày, còn PRO được mở các công cụ nâng cao.
+
+\subsection{Phân rã chức năng theo miền}
+
+Backend được chia theo miền để code và báo cáo thống nhất: Auth quản lý tài khoản; Trips quản lý chuyến, ngày, địa điểm và thành viên; Expenses quản lý sổ chi tiêu; Checklist quản lý chuẩn bị; Attachments/Import quản lý booking; Geo quản lý tìm kiếm và lộ trình; AI quản lý job tạo lịch trình; Realtime quản lý sự kiện cộng tác. Cách chia này giúp mỗi module có trách nhiệm rõ ràng và dễ kiểm thử hơn.
+
+\subsection{Luồng trạng thái dữ liệu quan trọng}
+
+Một số dữ liệu có vòng đời rõ ràng và cần được mô tả để việc thiết kế CSDL dễ hiểu hơn.
+
+\textbf{Vòng đời Trip:} Trip bắt đầu ở trạng thái PRIVATE, distributionMode mặc định EXPLORE\_FREE. Khi người dùng bật chia sẻ, visibility chuyển LINK hoặc PUBLIC. Nếu người dùng đăng guide từ chuyến public, distributionMode đổi sang SHOP\_FREE hoặc SHOP\_PAID tùy giá guide. Khi người khác clone, Trip mới được tạo độc lập, không dùng chung Day/Place với Trip gốc.
+
+\textbf{Vòng đời Place:} Place có thể được tạo từ nhập tay, chọn địa điểm từ geocoding, AI planner, AI suggestion hoặc import booking. Place có thể chưa có dayId, sau đó được kéo vào một ngày. Nếu ngày bị xóa do đổi date range, Place không mất mà quay về trạng thái chưa xếp. Nếu Place có cost, nó có thể sinh Expense mirror.
+
+\textbf{Vòng đời Expense:} Expense được tạo thủ công, từ Place.cost hoặc từ Attachment.metadata.amount. Summary không lưu sẵn mà được tính lại từ Expense, TripMember và Settlement để giảm rủi ro dữ liệu tổng hợp bị lệch. Settlement là dữ liệu đã xảy ra, không xóa ngầm khi Expense thay đổi.
+
+\textbf{Vòng đời AI job:} Job bắt đầu QUEUED, chuyển qua các stage xử lý và kết thúc SUCCEEDED hoặc FAILED. Frontend không đoán kết quả từ thời gian chờ mà luôn đọc trạng thái từ database qua endpoint polling. Điều này giúp người dùng thấy lỗi cụ thể nếu provider ngoài hoặc dữ liệu địa điểm không đủ tốt.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.9cm and 1.0cm]
+  \node[softbox] (private) {Trip\\PRIVATE};
+  \node[box, right=of private] (link) {Trip\\LINK};
+  \node[box, right=of link] (public) {Trip\\PUBLIC};
+  \node[box, right=of public] (guide) {Guide\\SHOP\_FREE/PAID};
+
+  \node[softbox, below=1.2cm of private] (unplanned) {Place\\chưa xếp ngày};
+  \node[box, right=of unplanned] (planned) {Place\\trong Day};
+  \node[box, right=of planned] (cost) {Place có cost\\mirror Expense};
+
+  \node[softbox, below=1.2cm of unplanned] (queued) {AI Job\\QUEUED};
+  \node[box, right=of queued] (running) {RUNNING\\stage/progress};
+  \node[box, right=of running] (success) {SUCCEEDED\\resultTripId};
+  \node[box, below=0.8cm of running] (failed) {FAILED\\errorMessage};
+
+  \draw[flowarrow] (private) -- node[above, font=\scriptsize]{bật link} (link);
+  \draw[flowarrow] (link) -- node[above, font=\scriptsize]{publish} (public);
+  \draw[flowarrow] (public) -- node[above, font=\scriptsize]{đăng guide} (guide);
+  \draw[flowarrow] (unplanned) -- node[above, font=\scriptsize]{kéo vào ngày} (planned);
+  \draw[flowarrow] (planned) -- node[above, font=\scriptsize]{nhập chi phí} (cost);
+  \draw[flowarrow] (planned) to[bend left=18] node[below, font=\scriptsize]{đổi date range} (unplanned);
+  \draw[flowarrow] (queued) -- node[above, font=\scriptsize]{worker nhận job} (running);
+  \draw[flowarrow] (running) -- node[above, font=\scriptsize]{lưu trip} (success);
+  \draw[flowarrow] (running) -- node[right, font=\scriptsize]{lỗi provider/validation} (failed);
+\end{tikzpicture}}
+\caption{Sơ đồ trạng thái rút gọn của Trip, Place và AI job}
+\label{fig:state-main}
+\end{figure}
+
+\section{Đặc tả ca sử dụng}
+
+\subsection{Sơ đồ use case tổng quát}
+
+Sơ đồ use case tổng quát của hệ thống được xây dựng quanh bốn nhóm tác nhân: khách chưa đăng nhập, người dùng đã đăng nhập, thành viên trong chuyến đi và các dịch vụ ngoài như bản đồ, AI, thanh toán, booking. Thay vì đưa toàn bộ mã PlantUML vào thân báo cáo, phần này mô tả ngắn quan hệ chính để giữ tài liệu gọn hơn.
+
+\begin{itemize}
+  \item Khách có thể xem trang giới thiệu, Explore, public trip và đăng ký/đăng nhập.
+  \item Người dùng đã đăng nhập có thể tạo chuyến đi, dùng AI planner và clone lịch trình public.
+  \item OWNER/EDITOR thao tác với lịch trình, thành viên, chi phí, checklist, booking, attachment và chia sẻ public.
+  \item VIEWER chỉ xem dữ liệu chuyến đi và bản đồ, không được gửi mutation làm thay đổi dữ liệu.
+  \item Geo provider và AI provider chỉ tham gia ở các luồng tích hợp chuyên biệt.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.85cm and 1.2cm]
+  \node[actorbox] (guest) {Khách\\chưa đăng nhập};
+  \node[actorbox, below=2.0cm of guest] (user) {Người dùng\\đã đăng nhập};
+  \node[actorbox, below=2.0cm of user] (member) {Thành viên\\trong chuyến};
+  \node[actorbox, right=11.5cm of user] (provider) {Dịch vụ ngoài\\Bản đồ/AI/Thanh toán};
+
+  \node[usecasebox, right=2.8cm of guest] (login) {Đăng ký\\đăng nhập};
+  \node[usecasebox, below=0.65cm of login] (public) {Xem Explore\\public trip};
+  \node[usecasebox, below=0.65cm of public] (create) {Tạo\\chuyến đi};
+  \node[usecasebox, below=0.65cm of create] (plan) {Quản lý\\lịch trình};
+  \node[usecasebox, below=0.65cm of plan] (expense) {Quản lý\\chi phí};
+  \node[usecasebox, below=0.65cm of expense] (checklist) {Checklist\\booking};
+  \node[usecasebox, right=2.3cm of create] (invite) {Mời và phân\\quyền thành viên};
+  \node[usecasebox, right=2.3cm of plan] (map) {Bản đồ\\route};
+  \node[usecasebox, right=2.3cm of expense] (ai) {AI planner\\gợi ý địa điểm};
+  \node[usecasebox, right=2.3cm of checklist] (share) {Chia sẻ\\clone guide};
+
+  \node[draw=mediBorder, rounded corners=3pt, fit=(login)(public)(create)(plan)(expense)(checklist)(invite)(map)(ai)(share), inner sep=0.35cm, label={[font=\sffamily\small\bfseries]above:Hệ thống \ProjectName{}}] (system) {};
+
+  \draw[relarrow] (guest) -- (login);
+  \draw[relarrow] (guest) -- (public);
+  \draw[relarrow] (user) -- (create);
+  \draw[relarrow] (user) -- (ai);
+  \draw[relarrow] (user) -- (share);
+  \draw[relarrow] (member) -- (plan);
+  \draw[relarrow] (member) -- (expense);
+  \draw[relarrow] (member) -- (checklist);
+  \draw[relarrow] (member) -- (invite);
+  \draw[dashedrel] (map) -- (provider);
+  \draw[dashedrel] (ai) -- (provider);
+  \draw[dashedrel] (share) -- (provider);
+\end{tikzpicture}}
+\caption{Sơ đồ use case tổng quát của hệ thống \ProjectName}
+\label{fig:usecase-overview}
+\end{figure}
+
+Hình \ref{fig:usecase-overview} cho thấy ranh giới hệ thống nằm ở phần quản lý dữ liệu chuyến đi và trải nghiệm cộng tác. Các dịch vụ ngoài không trực tiếp thay đổi dữ liệu nghiệp vụ nếu chưa đi qua backend. Ví dụ, provider bản đồ chỉ trả tọa độ hoặc đường đi; backend mới quyết định lưu Place, route path hoặc kết quả tối ưu. Cách tách này giúp hệ thống dễ thay provider mà không làm thay đổi luồng người dùng chính.
+
+\subsection{Danh sách ca sử dụng}
+
+\begin{longtable}{|C{1.6cm}|P{4.4cm}|P{3.2cm}|P{6.1cm}|}
+\caption{Danh sách ca sử dụng chính}\\
+\hline
+\textbf{Mã} & \textbf{Tên ca sử dụng} & \textbf{Tác nhân} & \textbf{Kết quả chính}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Mã} & \textbf{Tên ca sử dụng} & \textbf{Tác nhân} & \textbf{Kết quả chính}\\
+\hline
+\endhead
+UC-01 & Đăng ký/đăng nhập & Khách & Người dùng có session hợp lệ và truy cập được trang chuyến đi.\\
+\hline
+UC-02 & Tạo chuyến đi mới & User & Trip, Day và TripMember OWNER được tạo.\\
+\hline
+UC-03 & Quản lý lịch trình & Owner/Editor & Place được thêm, sửa, xóa, kéo thả giữa các ngày.\\
+\hline
+UC-04 & Xem bản đồ chuyến đi & Member & Marker và route path hiển thị theo ngày/địa điểm active.\\
+\hline
+UC-05 & Mời và phân quyền thành viên & Owner/Editor & Thành viên mới được thêm hoặc join qua link; role được cập nhật.\\
+\hline
+UC-06 & Quản lý chi phí nhóm & Owner/Editor & Expense được ghi, tổng hợp ngân sách và nợ được tính lại.\\
+\hline
+UC-07 & Ghi nhận thanh toán & Owner/Editor & Settlement được lưu, net balance của nhóm thay đổi.\\
+\hline
+UC-08 & Quản lý checklist & Owner/Editor & Checklist TODO/PACKING được thêm, check/uncheck hoặc xóa.\\
+\hline
+UC-09 & Đính kèm booking & Owner/Editor & Attachment được lưu; nếu có amount thì Expense được tạo/cập nhật.\\
+\hline
+UC-10 & Import booking text & Owner/Editor & Hệ thống parse text và tạo Place/Attachment tương ứng.\\
+\hline
+UC-11 & Chia sẻ công khai & Owner/Editor & Trip chuyển visibility và có public URL.\\
+\hline
+UC-12 & Explore và clone lịch trình & User/Guest & User xem trip public; user đăng nhập clone thành trip riêng.\\
+\hline
+UC-13 & AI tạo lịch trình & User & Job AI chạy async và tạo trip hoàn chỉnh khi thành công.\\
+\hline
+UC-14 & AI gợi ý địa điểm & Owner/Editor & Danh sách gợi ý phù hợp destination/prompt được trả về.\\
+\hline
+\end{longtable}
+
+\subsection{Đặc tả tóm tắt các ca sử dụng trọng tâm}
+
+Để tránh báo cáo quá dài, các ca sử dụng trọng tâm được rút gọn theo cùng một cấu trúc: tác nhân, điều kiện chính, luồng xử lý và kết quả. Bảng dưới đây giữ lại những nghiệp vụ quan trọng nhất cần chứng minh trong đồ án.
+
+\begin{longtable}{|C{1.6cm}|P{4.3cm}|P{5.2cm}|P{4.4cm}|}
+\caption{Đặc tả tóm tắt ca sử dụng trọng tâm}\\
+\hline
+\textbf{Mã} & \textbf{Tác nhân/điều kiện} & \textbf{Luồng xử lý chính} & \textbf{Kết quả mong đợi}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Mã} & \textbf{Tác nhân/điều kiện} & \textbf{Luồng xử lý chính} & \textbf{Kết quả mong đợi}\\
+\hline
+\endhead
+UC-01 & Khách có email hợp lệ hoặc tài khoản Google & Gửi form đăng ký/đăng nhập, backend xác thực, cấp access token và refresh token & Người dùng có session hợp lệ, reload vẫn khôi phục được hồ sơ qua \texttt{/auth/me}.\\
+\hline
+UC-02 & User đã đăng nhập & Nhập thông tin chuyến, ngày đi/ngày về, ngân sách, ảnh bìa; backend tạo Trip, Day và TripMember OWNER & Dashboard có chuyến mới, trang chi tiết có đủ cột ngày để thêm địa điểm.\\
+\hline
+UC-03 & OWNER hoặc EDITOR & Thêm địa điểm, tìm tọa độ, kéo thả giữa ngày hoặc vùng chưa xếp; backend cập nhật order trong transaction & Lịch trình, bản đồ, route và chi phí liên quan đồng bộ.\\
+\hline
+UC-05 & OWNER hoặc EDITOR & Mời thành viên bằng email/link, đổi role, kiểm tra quyền trước mỗi mutation & Thành viên có vai trò OWNER, EDITOR hoặc VIEWER rõ ràng.\\
+\hline
+UC-06 & OWNER hoặc EDITOR & Tạo khoản chi, chọn người trả và người cùng chia; backend tính summary và simplified debts & Nhóm thấy tổng chi, ngân sách, net balance và gợi ý chuyển tiền.\\
+\hline
+UC-08 & OWNER hoặc EDITOR & Thêm, check/uncheck, xóa mục TODO hoặc PACKING & Checklist chuẩn bị chuyến đi được cập nhật realtime cho các thành viên.\\
+\hline
+UC-10 & OWNER hoặc EDITOR & Dán nội dung booking, parser nhận diện địa điểm/ngày/số tiền, tạo Place và Attachment & Booking xuất hiện trong lịch trình, attachment và chi phí nếu có amount.\\
+\hline
+UC-12 & User hoặc khách xem public trip & Bật visibility LINK/PUBLIC, mở public URL, clone lịch trình nếu đăng nhập & Public DTO không lộ email/inviteCode; trip clone độc lập với trip gốc.\\
+\hline
+UC-13 & User còn lượt AI hoặc PRO & Gửi form AI planner, backend tạo job, worker xử lý bất đồng bộ và frontend poll tiến độ & Job thành công tạo Trip, Day, Place, ChecklistItem và metadata.\\
+\hline
+\end{longtable}
+
+\subsection{Mô tả chi tiết các ca sử dụng trọng tâm}
+
+\subsubsection{UC-02: Tạo chuyến đi mới}
+
+Tác nhân chính là người dùng đã đăng nhập. Người dùng nhập tên chuyến đi, điểm đến, ngày bắt đầu, ngày kết thúc, ngân sách dự kiến và ảnh bìa nếu có. Frontend kiểm tra sơ bộ dữ liệu để tránh gửi request rỗng, sau đó gọi API tạo chuyến. Backend kiểm tra ngày kết thúc không được trước ngày bắt đầu, tạo Trip, tạo TripMember với role OWNER cho người tạo và sinh danh sách Day tương ứng với số ngày của chuyến đi.
+
+Kết quả thành công là dashboard xuất hiện chuyến đi mới và người dùng có thể mở trang chi tiết để thêm địa điểm. Trường hợp lỗi gồm thiếu tiêu đề, khoảng ngày không hợp lệ hoặc token hết hạn. Với token hết hạn, frontend gọi refresh token trước khi yêu cầu người dùng đăng nhập lại.
+
+\subsubsection{UC-03: Quản lý lịch trình và bản đồ}
+
+Đây là ca sử dụng trung tâm của hệ thống. Người dùng có quyền OWNER hoặc EDITOR có thể thêm địa điểm bằng nhập tay hoặc chọn từ gợi ý bản đồ. Khi địa điểm có tọa độ, frontend hiển thị marker trên bản đồ và backend có thể lấy route legs/route path theo ngày. Nếu địa điểm chưa xác định ngày cụ thể, Place được lưu với \texttt{dayId = null}; khi người dùng kéo thả vào một ngày, backend cập nhật \texttt{dayId} và \texttt{order}.
+
+Điểm cần kiểm soát là mọi Place được thao tác phải thuộc đúng Trip hiện tại. Khi reorder, request gửi danh sách các move gồm placeId, dayId mới và order mới. Service kiểm tra toàn bộ placeId/dayId trong cùng một transaction trước khi cập nhật. Nếu một phần dữ liệu không hợp lệ, toàn bộ thao tác bị từ chối để lịch trình không bị trạng thái nửa vời.
+
+\subsubsection{UC-06: Quản lý chi phí nhóm}
+
+Tác nhân là OWNER hoặc EDITOR. Người dùng tạo khoản chi bằng cách nhập tiêu đề, số tiền, danh mục, người trả và danh sách người cùng chia. Backend kiểm tra payer và splitWith đều phải là thành viên của chuyến đi. Sau đó hệ thống lưu Expense và khi frontend yêu cầu summary, backend tính lại tổng chi, phần đã trả, phần phải chịu, net balance và danh sách settlement tối giản.
+
+Về nghiệp vụ, hệ thống không lưu cứng số nợ của từng người ngay trong Expense vì số liệu này phụ thuộc toàn bộ tập khoản chi và settlement hiện có. Cách tính lại từ dữ liệu gốc giúp giảm nguy cơ lệch số khi người dùng sửa hoặc xóa một khoản chi. Với các chi phí phát sinh từ Place.cost hoặc booking amount, hệ thống đồng bộ sang Expense để tab Chi phí phản ánh đầy đủ ngân sách chuyến đi.
+
+\subsubsection{UC-13: AI tạo lịch trình}
+
+Người dùng nhập điểm đến, thời gian, ngân sách, số người, sở thích và nhịp độ di chuyển. Vì quá trình tạo lịch trình có thể gọi provider AI, tìm địa điểm và tối ưu route nên backend không xử lý đồng bộ trong một request dài. Thay vào đó API trả \texttt{generationId}, lưu job ở trạng thái QUEUED và worker xử lý theo từng stage. Frontend poll trạng thái để hiển thị tiến độ.
+
+Khi job thành công, hệ thống tạo Trip, Day, Place và checklist gợi ý. Khi job thất bại, record vẫn giữ \texttt{errorMessage} để frontend thông báo rõ nguyên nhân. Cơ chế job cũng hỗ trợ giới hạn lượt AI theo gói FREE/PRO và tránh tình trạng request bị timeout nếu provider ngoài phản hồi chậm.
+
+\section{Phân tích rủi ro}
+
+Một số rủi ro chính của hệ thống gồm dữ liệu địa điểm thiếu tọa độ, provider bản đồ/AI lỗi, nhiều thành viên chỉnh cùng lúc, chia tiền sai do người không thuộc chuyến, public trip lộ dữ liệu riêng và webhook thanh toán bị gửi lặp. Hướng xử lý tương ứng là cho phép fallback Nominatim/Haversine, resolve lại địa điểm trước khi lưu, dùng transaction cho thao tác nhiều bản ghi, kiểm tra TripMember ở backend, tách PublicTripDto khỏi TripDetailDto và đặt unique cho mã giao dịch thanh toán.
+
+Với phạm vi DACN1, rủi ro quan trọng nhất là bảo đảm dữ liệu chuyến đi không bị lệch giữa lịch trình, bản đồ và chi phí. Vì vậy các thao tác tạo chuyến, kéo thả địa điểm, mirror Place.cost sang Expense và import booking cần được kiểm tra kỹ hơn các tính năng phụ.
+
+\section{Biểu đồ luồng dữ liệu và hoạt động}
+
+\subsection{Biểu đồ luồng dữ liệu mức ngữ cảnh}
+
+Ở mức ngữ cảnh, hệ thống \ProjectName{} nhận dữ liệu từ người dùng và trả lại lịch trình, bản đồ, chi phí, checklist, kết quả AI hoặc dữ liệu public. Các provider ngoài chỉ đóng vai trò cung cấp dữ liệu bổ trợ như tọa độ, route, gợi ý AI hoặc trạng thái thanh toán; dữ liệu chính vẫn được kiểm soát bởi backend và cơ sở dữ liệu nội bộ.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=1.2cm and 1.5cm]
+  \node[actorbox] (guest) {Khách / User};
+  \node[box, right=2.4cm of guest, minimum width=4.2cm, minimum height=1.2cm, fill=mediPaper] (system) {Hệ thống \ProjectName\\Web + API};
+  \node[softbox, below=1.3cm of system, minimum width=3.8cm] (db) {PostgreSQL\\Redis};
+  \node[actorbox, right=2.4cm of system] (geo) {Goong / Nominatim};
+  \node[actorbox, above=1.2cm of geo] (ai) {AI provider};
+  \node[actorbox, below=1.2cm of geo] (pay) {SePay / mock};
+
+  \draw[flowarrow] (guest) -- node[above, font=\scriptsize]{form, thao tác, token} (system);
+  \draw[flowarrow] (system) -- node[below, font=\scriptsize]{lịch trình, chi phí, public DTO} (guest);
+  \draw[flowarrow] (system) -- node[right, font=\scriptsize]{CRUD, transaction} (db);
+  \draw[flowarrow] (db) -- node[left, font=\scriptsize]{TripDetail, summary, job} (system);
+  \draw[flowarrow] (system) -- node[above, font=\scriptsize]{autocomplete, route} (geo);
+  \draw[flowarrow] (geo) -- node[below, font=\scriptsize]{tọa độ, polyline} (system);
+  \draw[flowarrow] (system) -- node[right, font=\scriptsize]{prompt, context} (ai);
+  \draw[flowarrow] (ai) -- node[left, font=\scriptsize]{gợi ý, lịch trình} (system);
+  \draw[flowarrow] (system) -- node[right, font=\scriptsize]{checkout/webhook} (pay);
+  \draw[flowarrow] (pay) -- node[left, font=\scriptsize]{trạng thái thanh toán} (system);
+\end{tikzpicture}}
+\caption{Biểu đồ luồng dữ liệu mức ngữ cảnh}
+\label{fig:dfd-context}
+\end{figure}
+
+\subsection{Biểu đồ hoạt động tạo chuyến đi}
+
+Luồng tạo chuyến đi có nhiều bước hơn một thao tác insert Trip đơn giản, vì sau khi tạo Trip hệ thống phải sinh Day và membership OWNER. Biểu đồ dưới đây mô tả các bước chính từ lúc người dùng gửi form đến khi giao diện chuyển sang trang chi tiết.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.75cm]
+  \node[softbox, minimum width=4.2cm] (start) {Người dùng nhập form tạo chuyến};
+  \node[box, below=of start, minimum width=4.2cm] (validateClient) {Frontend kiểm tra dữ liệu bắt buộc};
+  \node[box, below=of validateClient, minimum width=4.2cm] (api) {Gửi POST \texttt{/trips}};
+  \node[box, below=of api, minimum width=4.2cm] (validateServer) {ZodPipe kiểm tra schema};
+  \node[box, below=of validateServer, minimum width=4.2cm] (service) {TripsService kiểm tra khoảng ngày};
+  \node[box, below=of service, minimum width=4.2cm] (tx) {Transaction tạo Trip, Day, TripMember OWNER};
+  \node[box, below=of tx, minimum width=4.2cm] (result) {Trả TripDetailDto / chuyển trang chi tiết};
+  \draw[flowarrow] (start) -- (validateClient);
+  \draw[flowarrow] (validateClient) -- (api);
+  \draw[flowarrow] (api) -- (validateServer);
+  \draw[flowarrow] (validateServer) -- (service);
+  \draw[flowarrow] (service) -- (tx);
+  \draw[flowarrow] (tx) -- (result);
+\end{tikzpicture}}
+\caption{Biểu đồ hoạt động tạo chuyến đi mới}
+\label{fig:activity-create-trip}
+\end{figure}
+
+\subsection{Biểu đồ hoạt động cập nhật lịch trình}
+
+Khi người dùng kéo thả địa điểm, giao diện có thể cập nhật tạm thời để tạo cảm giác mượt, nhưng backend vẫn là nơi xác nhận dữ liệu cuối. Nếu backend từ chối do người dùng không đủ quyền hoặc dữ liệu không cùng Trip, frontend phải rollback/refetch lại dữ liệu.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.85cm and 1.2cm]
+  \node[softbox] (drag) {Kéo thả Place trên UI};
+  \node[box, right=of drag] (payload) {Tạo payload moves};
+  \node[box, right=of payload] (guard) {JWT + TripMember\\role EDITOR};
+  \node[box, below=1cm of guard] (validate) {Kiểm tra Place/Day\\cùng tripId};
+  \node[box, left=of validate] (tx) {Cập nhật dayId/order\\trong transaction};
+  \node[box, left=of tx] (event) {Phát event\\itinerary:changed};
+  \node[softbox, below=1cm of tx] (ui) {Client refetch\\lịch trình + bản đồ};
+  \draw[flowarrow] (drag) -- (payload);
+  \draw[flowarrow] (payload) -- (guard);
+  \draw[flowarrow] (guard) -- (validate);
+  \draw[flowarrow] (validate) -- (tx);
+  \draw[flowarrow] (tx) -- (event);
+  \draw[flowarrow] (event) -- (ui);
+\end{tikzpicture}}
+\caption{Biểu đồ hoạt động kéo thả và cập nhật lịch trình}
+\label{fig:activity-reorder}
+\end{figure}
+
+\section{Thiết kế kiến trúc hệ thống}
+
+\subsection{Kiến trúc tổng thể}
+
+Hệ thống được tổ chức theo mô hình client-server trong monorepo:
+
+\begin{itemize}
+  \item \textbf{Web frontend}: Next.js chạy ở cổng 3002 trong môi trường dev.
+  \item \textbf{Mobile scaffold}: Expo dùng chung API với web, hiện có login và trip list.
+  \item \textbf{Backend API}: NestJS chạy ở cổng 4000, cung cấp REST API và WebSocket.
+  \item \textbf{Shared types}: package \texttt{@medi/types} định nghĩa Zod schema và DTO.
+  \item \textbf{Database}: PostgreSQL lưu dữ liệu nghiệp vụ.
+  \item \textbf{Realtime layer}: Redis hỗ trợ Socket.IO pub/sub khi mở rộng nhiều instance.
+  \item \textbf{Provider ngoài}: Goong/Nominatim cho địa điểm và route; OpenAI-compatible provider cho AI; SePay/mock cho PRO; các booking partners cho link đặt chỗ.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=1.0cm and 1.2cm]
+  \node[box, fill=mediPaper, minimum width=3.2cm, minimum height=1cm] (web) {Next.js Web\\App Router};
+  \node[box, below=of web, fill=mediPaper, minimum width=3.2cm, minimum height=1cm] (mobile) {Expo Mobile\\MVP};
+  \node[box, right=2.1cm of web, minimum width=3.8cm, minimum height=1cm] (api) {NestJS API\\REST Controllers};
+  \node[box, below=of api, minimum width=3.8cm, minimum height=1cm] (ws) {Socket.IO\\Trips Gateway};
+  \node[box, right=2.1cm of api, minimum width=3.4cm, minimum height=1cm] (service) {Service Layer\\Business Rules};
+  \node[box, below=of service, minimum width=3.4cm, minimum height=1cm] (types) {\texttt{@medi/types}\\DTO + Zod};
+  \node[softbox, right=2.1cm of service, minimum width=3.3cm, minimum height=1cm] (db) {PostgreSQL\\Prisma};
+  \node[softbox, below=of db, minimum width=3.3cm, minimum height=1cm] (redis) {Redis\\Pub/Sub};
+  \node[softbox, above=of db, minimum width=3.3cm, minimum height=1cm] (providers) {Goong / AI\\SePay};
+
+  \draw[flowarrow] (web) -- node[above, font=\scriptsize]{HTTPS JSON} (api);
+  \draw[flowarrow] (mobile) -- node[below, font=\scriptsize]{HTTPS JSON} (api);
+  \draw[flowarrow] (web) -- node[left, font=\scriptsize]{WebSocket} (ws);
+  \draw[flowarrow] (api) -- (service);
+  \draw[flowarrow] (service) -- (db);
+  \draw[flowarrow] (service) -- (providers);
+  \draw[flowarrow] (ws) -- (redis);
+  \draw[dashedrel] (api) -- (types);
+  \draw[dashedrel] (web) -- (types);
+  \draw[dashedrel] (mobile) -- (types);
+\end{tikzpicture}}
+\caption{Sơ đồ kiến trúc container của hệ thống}
+\label{fig:container-architecture}
+\end{figure}
+
+Sơ đồ kiến trúc cho thấy frontend và backend không chia sẻ database trực tiếp. Mọi thao tác dữ liệu đều đi qua API để bảo đảm validation, phân quyền và transaction. Package \texttt{@medi/types} đóng vai trò hợp đồng dữ liệu dùng chung, giúp giảm lỗi lệch kiểu giữa form frontend, controller backend và dữ liệu trả về cho UI.
+
+\begin{longtable}{|P{3.8cm}|P{5.4cm}|P{6.2cm}|}
+\caption{Tóm tắt kiến trúc container của hệ thống}\\
+\hline
+\textbf{Khối} & \textbf{Thành phần} & \textbf{Kết nối chính}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Khối} & \textbf{Thành phần} & \textbf{Kết nối chính}\\
+\hline
+\endhead
+Client & Next.js Web App, Expo Mobile MVP & Gọi REST API bằng HTTPS/JSON; web kết nối Socket.IO để nhận realtime event.\\
+\hline
+Backend & NestJS REST API, Socket.IO Gateway, AI Trip Worker & Controller nhận request, service xử lý nghiệp vụ, gateway phát event, worker xử lý job AI.\\
+\hline
+Lưu trữ & PostgreSQL, Redis Pub/Sub & PostgreSQL lưu dữ liệu chính; Redis hỗ trợ realtime pub/sub khi mở rộng nhiều instance.\\
+\hline
+Provider ngoài & Goong/Nominatim, AI provider, SePay/mock, booking partners & Cung cấp geocoding, route, AI planner, thanh toán PRO và link đặt chỗ.\\
+\hline
+\end{longtable}
+
+\subsection{Kiến trúc module backend}
+
+\begin{longtable}{|P{3.1cm}|P{5.4cm}|P{7cm}|}
+\caption{Các module backend trong phạm vi báo cáo}\\
+\hline
+\textbf{Module} & \textbf{Trách nhiệm} & \textbf{Dữ liệu/luồng liên quan}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Module} & \textbf{Trách nhiệm} & \textbf{Dữ liệu/luồng liên quan}\\
+\hline
+\endhead
+Auth & Đăng ký, đăng nhập, refresh, logout, hồ sơ, đổi mật khẩu & User, JWT, refreshHash, Google OAuth.\\
+\hline
+Trips & Tạo/sửa/xóa/list trip, chi tiết trip, public trip, clone, thành viên & Trip, Day, TripMember, Place, ChecklistItem.\\
+\hline
+Itinerary & Thêm/sửa/xóa/reorder place, route legs, route path, optimize day & Place, Day, PlaceCatalog, Expense mirror.\\
+\hline
+Expenses & Ghi chi phí, summary, settlement & Expense, bảng split, Settlement, TripMember.\\
+\hline
+Checklist & Quản lý TODO/PACKING & ChecklistItem.\\
+\hline
+Attachments & Đính kèm booking/link/file và đồng bộ expense & Attachment, Expense.\\
+\hline
+Geo & Autocomplete, place detail, geocode, distance matrix, direction path & Cache bộ nhớ, Goong/Nominatim.\\
+\hline
+AI & Usage, generate trip job, suggest places, optimize route AI & AiTripGenerationJob, PlaceCatalog, TripPersistence.\\
+\hline
+Public & API đọc trip public cho trang chia sẻ & PublicTripDto, PublicTripListItemDto.\\
+\hline
+Import & Parse booking text/email webhook & BookingParser, Place, Attachment.\\
+\hline
+Realtime & Phát sự kiện thay đổi theo trip room & TripRealtimeEvent, Socket.IO.\\
+\hline
+\end{longtable}
+
+Các module backend không hoạt động độc lập hoàn toàn. Trips là module trung tâm vì hầu hết dữ liệu nghiệp vụ đều cần tripId và membership. Itinerary, Expenses, Checklist, Attachments và Import đều gọi TripAccessService hoặc logic tương đương để kiểm tra quyền. Geo và AI là hai module tích hợp bên ngoài; kết quả của chúng chỉ được lưu khi đã đi qua service nghiệp vụ.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.9cm and 1.2cm]
+  \node[box, fill=mediPaper] (trips) {Trips\\TripAccess};
+  \node[box, left=of trips] (auth) {Auth\\JWT};
+  \node[box, right=of trips] (itinerary) {Itinerary\\Places};
+  \node[box, below=of trips] (expenses) {Expenses\\Settlement};
+  \node[box, left=of expenses] (checklist) {Checklist};
+  \node[box, right=of expenses] (attachments) {Attachments\\Import};
+  \node[box, above=of itinerary] (geo) {Geo\\Route};
+  \node[box, below=of itinerary] (ai) {AI\\Jobs};
+  \node[softbox, below=of expenses] (realtime) {Realtime Gateway};
+
+  \draw[flowarrow] (auth) -- (trips);
+  \draw[flowarrow] (trips) -- (itinerary);
+  \draw[flowarrow] (trips) -- (expenses);
+  \draw[flowarrow] (trips) -- (checklist);
+  \draw[flowarrow] (trips) -- (attachments);
+  \draw[flowarrow] (itinerary) -- (geo);
+  \draw[flowarrow] (ai) -- (trips);
+  \draw[flowarrow] (ai) -- (geo);
+  \draw[dashedrel] (itinerary) -- (realtime);
+  \draw[dashedrel] (expenses) -- (realtime);
+  \draw[dashedrel] (checklist) -- (realtime);
+  \draw[dashedrel] (attachments) -- (realtime);
+\end{tikzpicture}}
+\caption{Quan hệ giữa các module backend}
+\label{fig:backend-module-relation}
+\end{figure}
+
+\section{Thiết kế cơ sở dữ liệu}
+
+\subsection{Nguyên tắc thiết kế CSDL}
+
+Cơ sở dữ liệu được thiết kế theo hướng lấy Trip làm trung tâm. Mỗi chuyến đi có thành viên, ngày, địa điểm, chi phí, checklist và attachment riêng. Cách tổ chức này giúp backend kiểm tra quyền theo tripId và giúp frontend tải dữ liệu chi tiết chuyến đi theo một nguồn thống nhất.
+
+Các bảng dùng khóa chính dạng String/cuid để thuận tiện khi clone dữ liệu và ít lộ thứ tự tăng dần. Các quan hệ có tính tự nhiên như TripMember dùng khóa ghép tripId-userId để ngăn một người xuất hiện nhiều lần trong cùng chuyến. Những dữ liệu cần tính toán như tổng chi phí, net balance hoặc simplified debts không lưu cứng mà được tính lại từ Expense, Split và Settlement để tránh lệch số liệu.
+
+\subsection{Sơ đồ ERD tổng quát}
+
+Sơ đồ ERD của hệ thống được rút gọn theo các thực thể cốt lõi để làm rõ quan hệ nghiệp vụ. Các bảng phụ như audit log, affiliate click hoặc payment intent được trình bày ở phần mô tả nhóm dữ liệu, không đưa hết vào sơ đồ để tránh làm biểu đồ quá dày.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=1.0cm and 1.0cm]
+  \node[entitybox] (user) {\textbf{User}\\id, email, name\\plan, role\\refreshHash};
+  \node[entitybox, right=1.4cm of user] (tripmember) {\textbf{TripMember}\\tripId, userId\\role\\createdAt};
+  \node[entitybox, right=1.4cm of tripmember] (trip) {\textbf{Trip}\\id, ownerId\\title, destination\\startDate, endDate\\visibility};
+
+  \node[entitybox, below=1.1cm of trip] (day) {\textbf{Day}\\id, tripId\\date, order};
+  \node[entitybox, left=1.4cm of day] (place) {\textbf{Place}\\id, tripId, dayId\\name, lat, lng\\category, cost, order};
+  \node[entitybox, left=1.4cm of place] (catalog) {\textbf{PlaceCatalog}\\providerId\\normalizedName\\lat, lng\\qualityScore};
+
+  \node[entitybox, below=1.1cm of place] (expense) {\textbf{Expense}\\id, tripId\\title, amount\\payerId, category};
+  \node[entitybox, left=1.4cm of expense] (settlement) {\textbf{Settlement}\\fromUserId\\toUserId\\amount, settledAt};
+  \node[entitybox, right=1.4cm of expense] (checklist) {\textbf{ChecklistItem}\\tripId\\text, checked\\type};
+  \node[entitybox, right=1.4cm of checklist] (attachment) {\textbf{Attachment}\\tripId, placeId\\url, type\\metadata};
+
+  \node[entitybox, below=1.1cm of settlement] (aijob) {\textbf{AiTripGenerationJob}\\userId\\status, stage\\progress, resultTripId};
+  \node[entitybox, right=1.4cm of aijob] (guide) {\textbf{Guide}\\creatorId, tripId\\title, price\\published};
+  \node[entitybox, right=1.4cm of guide] (purchase) {\textbf{GuidePurchase}\\guideId, buyerId\\clonedTripId\\amount};
+
+  \draw[relarrow] (user) -- node[above, font=\scriptsize]{1-n} (tripmember);
+  \draw[relarrow] (trip) -- node[above, font=\scriptsize]{1-n} (tripmember);
+  \draw[relarrow] (user) to[bend left=14] node[above, font=\scriptsize]{owns} (trip);
+  \draw[relarrow] (trip) -- node[right, font=\scriptsize]{1-n} (day);
+  \draw[relarrow] (trip) -- node[above, font=\scriptsize]{1-n} (place);
+  \draw[relarrow] (day) -- node[above, font=\scriptsize]{1-n} (place);
+  \draw[relarrow] (catalog) -- node[above, font=\scriptsize]{1-n} (place);
+  \draw[relarrow] (trip) to[bend right=18] node[right, font=\scriptsize]{1-n} (expense);
+  \draw[relarrow] (user) to[bend right=18] node[left, font=\scriptsize]{payer/split} (expense);
+  \draw[relarrow] (trip) -- node[above, font=\scriptsize]{1-n} (checklist);
+  \draw[relarrow] (trip) -- node[above, font=\scriptsize]{1-n} (attachment);
+  \draw[relarrow] (place) -- node[above, font=\scriptsize]{0-n} (attachment);
+  \draw[relarrow] (trip) to[bend left=18] node[right, font=\scriptsize]{1-n} (settlement);
+  \draw[relarrow] (user) to[bend right=20] node[left, font=\scriptsize]{from/to} (settlement);
+  \draw[relarrow] (user) -- node[above, font=\scriptsize]{1-n} (aijob);
+  \draw[relarrow] (trip) -- node[above, font=\scriptsize]{1-n} (guide);
+  \draw[relarrow] (guide) -- node[above, font=\scriptsize]{1-n} (purchase);
+  \draw[relarrow] (user) to[bend left=12] node[above, font=\scriptsize]{buyer} (purchase);
+\end{tikzpicture}}
+\caption{Sơ đồ ERD rút gọn của hệ thống}
+\label{fig:erd-overview}
+\end{figure}
+
+ERD thể hiện Trip là trung tâm của miền nghiệp vụ. User không chỉ sở hữu Trip mà còn có thể tham gia Trip qua TripMember. Day và Place mô tả lịch trình theo ngày; PlaceCatalog lưu dữ liệu địa điểm đã chuẩn hóa từ provider để tái sử dụng cho geocoding và AI. Expense, Settlement và quan hệ splitWith phục vụ bài toán chia tiền. ChecklistItem và Attachment là dữ liệu phụ trợ nhưng vẫn gắn với Trip để kiểm soát quyền. Guide và GuidePurchase là lớp mở rộng cho chia sẻ/mua lịch trình, còn AiTripGenerationJob tách khỏi Trip để theo dõi quá trình tạo lịch trình bất đồng bộ.
+
+\subsection{Nhóm bảng dữ liệu chính}
+
+\begin{longtable}{|P{3.8cm}|P{5.6cm}|P{6.4cm}|}
+\caption{Nhóm bảng dữ liệu chính của hệ thống}\\
+\hline
+\textbf{Nhóm dữ liệu} & \textbf{Bảng chính} & \textbf{Vai trò trong hệ thống}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Nhóm dữ liệu} & \textbf{Bảng chính} & \textbf{Vai trò trong hệ thống}\\
+\hline
+\endhead
+Tài khoản & User & Lưu hồ sơ, phương thức đăng nhập, refresh token hash, gói FREE/PRO và giới hạn AI.\\
+\hline
+Chuyến đi và thành viên & Trip, TripMember, Day & Lưu thông tin chuyến, inviteCode, visibility, vai trò OWNER/EDITOR/VIEWER và danh sách ngày.\\
+\hline
+Lịch trình và bản đồ & Place, PlaceCatalog & Lưu địa điểm, tọa độ, danh mục, thứ tự trong ngày, địa điểm chưa xếp và dữ liệu đã resolve từ provider.\\
+\hline
+Chi phí nhóm & Expense, ExpenseSplits, Settlement & Lưu khoản chi, người trả, người cùng chia, settlement và dữ liệu để tính balance.\\
+\hline
+Chuẩn bị và booking & ChecklistItem, Attachment & Lưu việc cần làm, đồ cần mang, link/file booking, metadata và chi phí phát sinh từ booking.\\
+\hline
+AI và mở rộng & AiTripGenerationJob, PlaceCatalog & Theo dõi job AI, stage, progress, kết quả và địa điểm đã xác minh.\\
+\hline
+\end{longtable}
+
+\subsection{Từ điển dữ liệu rút gọn}
+
+Bảng dưới đây mô tả các thuộc tính quan trọng nhất của từng thực thể. Các trường thời gian như \texttt{createdAt}, \texttt{updatedAt} được dùng để truy vết thay đổi và sắp xếp dữ liệu; các trường JSON chỉ dùng cho metadata linh hoạt, không thay thế quan hệ chính trong CSDL.
+
+\begin{longtable}{|P{3.1cm}|P{5.9cm}|P{6.6cm}|}
+\caption{Từ điển dữ liệu các thực thể chính}\\
+\hline
+\textbf{Thực thể} & \textbf{Thuộc tính quan trọng} & \textbf{Ràng buộc và ý nghĩa}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Thực thể} & \textbf{Thuộc tính quan trọng} & \textbf{Ràng buộc và ý nghĩa}\\
+\hline
+\endhead
+User & email, passwordHash, name, authProvider, role, plan, refreshHash & email là duy nhất; refreshHash không lưu token plain text; plan quyết định giới hạn AI và PRO feature.\\
+\hline
+Trip & ownerId, title, destination, startDate, endDate, visibility, inviteCode, budgetAmount & ownerId trỏ đến User; inviteCode duy nhất; khoảng ngày quyết định số bản ghi Day.\\
+\hline
+TripMember & tripId, userId, role & Khóa chính ghép tripId-userId; role OWNER/EDITOR/VIEWER là căn cứ phân quyền thao tác.\\
+\hline
+Day & tripId, date, order & Mỗi trip không có hai Day cùng date; order dùng để hiển thị ngày theo thứ tự.\\
+\hline
+Place & tripId, dayId, placeCatalogId, name, lat, lng, category, order, cost, expenseId & dayId có thể null để lưu địa điểm chưa xếp; placeCatalogId và expenseId có thể null tùy nguồn tạo.\\
+\hline
+Expense & tripId, title, amount, currency, category, payerId, splitWith & payerId và splitWith phải thuộc thành viên chuyến; summary tính động từ dữ liệu Expense và Settlement.\\
+\hline
+ChecklistItem & tripId, text, checked, type & type phân biệt TODO và PACKING; checked dùng cho trạng thái hoàn thành trên UI.\\
+\hline
+Attachment & tripId, placeId, uploaderId, url, type, metadata & placeId/uploaderId dùng SetNull để không mất attachment khi xóa place hoặc user liên quan.\\
+\hline
+AiTripGenerationJob & userId, input, status, stage, progress, resultTripId, errorMessage & Lưu tiến độ job AI bất đồng bộ; frontend poll theo id để hiển thị kết quả hoặc lỗi.\\
+\hline
+Guide, GuidePurchase & creatorId, tripId, price, published, buyerId, clonedTripId & Guide dùng cho lịch trình chia sẻ; GuidePurchase ngăn một user mua/lấy trùng cùng guide.\\
+\hline
+\end{longtable}
+
+\subsection{Toàn vẹn dữ liệu}
+
+Một số quy tắc toàn vẹn quan trọng được đặt ở cả database và service. Khi tạo Trip, hệ thống phải tạo kèm TripMember OWNER và Day theo khoảng ngày. Khi đổi date range, Day ngoài phạm vi bị xóa nhưng Place trong các ngày đó được chuyển về vùng chưa xếp thay vì mất dữ liệu. Khi kéo thả lịch trình, toàn bộ danh sách moves được kiểm tra cùng tripId rồi cập nhật trong transaction. Khi Place có cost hoặc booking có amount, backend đồng bộ Expense để tab Chi phí phản ánh đúng tổng tiền.
+
+Các quan hệ phụ thuộc cứng như Trip-Day, Trip-Place, Trip-Expense, Trip-ChecklistItem và Trip-Attachment dùng cascade khi xóa chuyến. Các quan hệ mềm như Day-Place hoặc Place-Attachment ưu tiên SetNull để giữ dữ liệu người dùng đã nhập trong những trường hợp thay đổi ngày hoặc xóa địa điểm.
+
+\subsection{Index và hiệu năng}
+
+Các index chính bám theo màn hình sử dụng thực tế: TripMember.userId cho danh sách chuyến của tôi; Day.tripId, Place.tripId/dayId, Expense.tripId, ChecklistItem.tripId và Attachment.tripId cho trang chi tiết chuyến; PlaceCatalog.providerId/normalizedName cho geocoding và AI; AiTripGenerationJob.userId/status cho polling job; ProPaymentIntent.checkoutCode và sepayTransactionId cho thanh toán idempotent. Với quy mô MVP, expense summary được tính trực tiếp từ dữ liệu gốc; khi mở rộng có thể thêm cache tổng hợp theo trip nhưng cần invalidate sau mọi thay đổi chi phí.
+
+\section{Thiết kế API}
+
+Backend cung cấp REST API theo từng miền nghiệp vụ, trả dữ liệu dạng JSON và dùng JWT để xác thực các endpoint riêng tư. Frontend không tự định nghĩa kiểu dữ liệu rời rạc mà dùng chung DTO/Zod schema trong package \texttt{@medi/types}; nhờ đó dữ liệu gửi lên được kiểm tra ở biên API và dữ liệu trả về có cấu trúc thống nhất giữa web, mobile scaffold và backend.
+
+\begin{longtable}{|P{4.5cm}|C{2.4cm}|P{8.7cm}|}
+\caption{Nhóm API chính của hệ thống}\\
+\hline
+\textbf{Nhóm API} & \textbf{Phương thức} & \textbf{Chức năng chính}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Nhóm API} & \textbf{Phương thức} & \textbf{Chức năng chính}\\
+\hline
+\endhead
+\path{/auth/*} & POST, GET, PATCH & Đăng ký, đăng nhập, refresh token, đăng xuất, lấy/cập nhật hồ sơ, đổi mật khẩu và đăng nhập Google.\\
+\hline
+\path{/trips/*} & GET, POST, PATCH, DELETE & Tạo chuyến, xem danh sách, xem chi tiết, cập nhật/xóa chuyến, mời thành viên, join bằng mã và clone lịch trình.\\
+\hline
+\path{/trips/:tripId/places/*} & GET, POST, PATCH, DELETE & Thêm/sửa/xóa địa điểm, kéo thả lịch trình, tối ưu ngày, lấy route legs và route path cho bản đồ.\\
+\hline
+\path{/trips/:tripId/expenses/*} & GET, POST, PATCH, DELETE & Quản lý khoản chi, summary chi phí, settlement và tính gợi ý chuyển tiền giữa các thành viên.\\
+\hline
+\path{/trips/:tripId/checklist/*} & GET, POST, PATCH, DELETE & Quản lý checklist TODO/PACKING, trạng thái hoàn thành và xóa mục chuẩn bị.\\
+\hline
+\path{/trips/:tripId/attachments/*} và \path{/import/*} & GET, POST, PATCH, DELETE & Lưu booking/link/file metadata, parse nội dung đặt chỗ và tạo dữ liệu Place/Attachment liên quan.\\
+\hline
+\path{/geo/*} và \path{/ai/*} & GET, POST & Tìm địa điểm, lấy place detail, kiểm tra quota AI, tạo job AI planner, xem tiến độ và gợi ý địa điểm.\\
+\hline
+\path{/public/*}, \path{/shop/*}, \path{/billing/*} & GET, POST, PATCH & Hiển thị trip public, guide, mua/lấy guide, kiểm tra gói PRO, tạo checkout và nhận webhook thanh toán.\\
+\hline
+\end{longtable}
+
+\subsection{Nguyên tắc thiết kế API}
+
+Các API thay đổi dữ liệu đều yêu cầu access token và được kiểm tra quyền ở tầng service thông qua TripMember. Với dữ liệu đầu vào phức tạp như tạo chuyến, thêm địa điểm, tạo expense, import booking hoặc tạo AI trip, controller dùng ZodPipe để validate request trước khi service xử lý. Những thao tác ảnh hưởng nhiều bảng như tạo Trip, reorder Place, đồng bộ Expense từ Place.cost hoặc tạo trip từ AI được đặt trong transaction để hạn chế lệch dữ liệu.
+
+Khi request làm thay đổi dữ liệu đang được nhiều người cùng xem, backend phát realtime event theo room của chuyến đi. Frontend gửi thêm header \texttt{x-socket-id} trong một số mutation để server tránh phát lại sự kiện cho chính client vừa thao tác, còn các client khác sẽ refetch query tương ứng. Các API public dùng DTO riêng để không lộ email thành viên, inviteCode, booking riêng tư hoặc dữ liệu quản trị.
+
+\subsection{Quy ước phản hồi và mã lỗi}
+
+Các API trả dữ liệu thành công theo DTO cụ thể, ví dụ AuthResponse, TripListItemDto, TripDetailDto, ExpenseSummaryDto hoặc AiGenerationStatusDto. Với lỗi nghiệp vụ, backend ưu tiên thông báo tiếng Việt rõ nguyên nhân để frontend có thể hiển thị trực tiếp. Các nhóm mã lỗi được dùng như sau: 400 cho dữ liệu đầu vào không hợp lệ, 401 cho thiếu hoặc sai token, 403 cho không đủ quyền trong chuyến đi, 404 cho tài nguyên không tồn tại hoặc người dùng không được biết tài nguyên đó, 409 cho xung đột dữ liệu như trùng webhook thanh toán hoặc thao tác làm mất OWNER.
+
+Các endpoint public không dùng cùng DTO với endpoint thành viên. Public DTO chỉ giữ dữ liệu phục vụ xem lịch trình: tiêu đề, điểm đến, ngày, địa điểm, route cơ bản, thông tin chủ sở hữu đã lọc và thống kê tổng quát. Những dữ liệu nhạy cảm như email thành viên, inviteCode, attachment riêng tư hoặc settlement không được đưa vào phản hồi public.
+
+\section{Biểu đồ tuần tự các luồng API chính}
+
+\subsection{Sequence đăng nhập và khôi phục phiên}
+
+Luồng xác thực bắt đầu từ form đăng nhập. Sau khi backend xác thực email/password, hệ thống trả access token và refresh token. Khi người dùng reload trình duyệt, frontend gọi \texttt{/auth/me}; nếu access token hết hạn, frontend dùng refresh token để lấy cặp token mới.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[lifelinebox] (u) at (0,0) {Người dùng};
+  \node[lifelinebox] (web) at (3.2,0) {Web app};
+  \node[lifelinebox] (api) at (6.4,0) {AuthController};
+  \node[lifelinebox] (svc) at (9.6,0) {AuthService};
+  \node[lifelinebox] (db) at (12.8,0) {Database};
+  \foreach \x in {0,3.2,6.4,9.6,12.8}{\draw[dashed, mediMuted] (\x,-0.45) -- (\x,-5.2);}
+  \draw[flowarrow] (0,-0.9) -- node[above, font=\scriptsize]{email/password} (3.2,-0.9);
+  \draw[flowarrow] (3.2,-1.4) -- node[above, font=\scriptsize]{POST /auth/login} (6.4,-1.4);
+  \draw[flowarrow] (6.4,-1.9) -- node[above, font=\scriptsize]{validate input} (9.6,-1.9);
+  \draw[flowarrow] (9.6,-2.4) -- node[above, font=\scriptsize]{find user, compare hash} (12.8,-2.4);
+  \draw[flowarrow] (12.8,-2.9) -- node[above, font=\scriptsize]{user data} (9.6,-2.9);
+  \draw[flowarrow] (9.6,-3.4) -- node[above, font=\scriptsize]{access + refresh token} (6.4,-3.4);
+  \draw[flowarrow] (6.4,-3.9) -- node[above, font=\scriptsize]{AuthResponse} (3.2,-3.9);
+  \draw[flowarrow] (3.2,-4.4) -- node[above, font=\scriptsize]{lưu phiên, chuyển /trips} (0,-4.4);
+\end{tikzpicture}}
+\caption{Sequence đăng nhập và cấp token}
+\label{fig:seq-login}
+\end{figure}
+
+\subsection{Sequence kéo thả địa điểm trong lịch trình}
+
+Khi người dùng kéo Place giữa các ngày, frontend gửi danh sách move thay vì gửi từng thao tác nhỏ. Backend kiểm tra role, kiểm tra toàn bộ Place/Day cùng tripId rồi cập nhật trong transaction. Sau khi thành công, realtime gateway phát sự kiện để các client khác refetch dữ liệu.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[lifelinebox] (web) at (0,0) {Web app};
+  \node[lifelinebox] (ctrl) at (3.3,0) {PlacesController};
+  \node[lifelinebox] (access) at (6.7,0) {TripAccess};
+  \node[lifelinebox] (svc) at (9.9,0) {PlacesService};
+  \node[lifelinebox] (db) at (13.0,0) {PostgreSQL};
+  \node[lifelinebox] (ws) at (16.2,0) {Realtime};
+  \foreach \x in {0,3.3,6.7,9.9,13.0,16.2}{\draw[dashed, mediMuted] (\x,-0.45) -- (\x,-5.7);}
+  \draw[flowarrow] (0,-0.9) -- node[above, font=\scriptsize]{PATCH /places/reorder} (3.3,-0.9);
+  \draw[flowarrow] (3.3,-1.4) -- node[above, font=\scriptsize]{JWT user + tripId} (6.7,-1.4);
+  \draw[flowarrow] (6.7,-1.9) -- node[above, font=\scriptsize]{role OWNER/EDITOR} (3.3,-1.9);
+  \draw[flowarrow] (3.3,-2.4) -- node[above, font=\scriptsize]{moves} (9.9,-2.4);
+  \draw[flowarrow] (9.9,-2.9) -- node[above, font=\scriptsize]{validate placeId/dayId} (13.0,-2.9);
+  \draw[flowarrow] (9.9,-3.4) -- node[above, font=\scriptsize]{update order transaction} (13.0,-3.4);
+  \draw[flowarrow] (13.0,-3.9) -- node[above, font=\scriptsize]{ok} (9.9,-3.9);
+  \draw[flowarrow] (3.3,-4.4) -- node[above, font=\scriptsize]{emit itinerary:changed} (16.2,-4.4);
+  \draw[flowarrow] (3.3,-5.0) -- node[above, font=\scriptsize]{\{ok: true\}} (0,-5.0);
+\end{tikzpicture}}
+\caption{Sequence cập nhật thứ tự địa điểm}
+\label{fig:seq-reorder}
+\end{figure}
+
+\subsection{Sequence AI tạo lịch trình}
+
+Luồng AI planner được thiết kế bất đồng bộ để tránh request dài và để frontend có thể hiển thị tiến độ. Job AI đi qua các bước: nhận input, kiểm tra quota, lưu job, worker gọi provider ngoài, chuẩn hóa địa điểm, tạo dữ liệu Trip/Day/Place và cập nhật trạng thái.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[lifelinebox] (web) at (0,0) {Web app};
+  \node[lifelinebox] (ctrl) at (3.0,0) {AiController};
+  \node[lifelinebox] (svc) at (6.0,0) {AiService};
+  \node[lifelinebox] (worker) at (9.0,0) {AI Worker};
+  \node[lifelinebox] (provider) at (12.0,0) {AI/Geo Provider};
+  \node[lifelinebox] (db) at (15.0,0) {Database};
+  \foreach \x in {0,3.0,6.0,9.0,12.0,15.0}{\draw[dashed, mediMuted] (\x,-0.45) -- (\x,-6.2);}
+  \draw[flowarrow] (0,-0.9) -- node[above, font=\scriptsize]{POST /ai/generate-trip} (3.0,-0.9);
+  \draw[flowarrow] (3.0,-1.4) -- node[above, font=\scriptsize]{validate + user} (6.0,-1.4);
+  \draw[flowarrow] (6.0,-1.9) -- node[above, font=\scriptsize]{check quota, create job} (15.0,-1.9);
+  \draw[flowarrow] (6.0,-2.4) -- node[above, font=\scriptsize]{202 + generationId} (0,-2.4);
+  \draw[flowarrow] (9.0,-2.9) -- node[above, font=\scriptsize]{load queued job} (15.0,-2.9);
+  \draw[flowarrow] (9.0,-3.4) -- node[above, font=\scriptsize]{prompt + context} (12.0,-3.4);
+  \draw[flowarrow] (12.0,-3.9) -- node[above, font=\scriptsize]{places, route data} (9.0,-3.9);
+  \draw[flowarrow] (9.0,-4.4) -- node[above, font=\scriptsize]{persist Trip/Day/Place} (15.0,-4.4);
+  \draw[flowarrow] (0,-5.0) -- node[above, font=\scriptsize]{GET /ai/generations/:id} (3.0,-5.0);
+  \draw[flowarrow] (3.0,-5.5) -- node[above, font=\scriptsize]{status/progress/resultTripId} (0,-5.5);
+\end{tikzpicture}}
+\caption{Sequence AI planner tạo chuyến đi bất đồng bộ}
+\label{fig:seq-ai}
+\end{figure}
+
+\section{Thiết kế bảo mật và xử lý lỗi}
+
+\subsection{Xác thực}
+
+Hệ thống hỗ trợ hai phương thức xác thực: email/password và Google OAuth. Với tài khoản local, mật khẩu được hash bằng bcrypt trước khi lưu. Khi đăng nhập thành công, backend phát access token và refresh token. Refresh token không lưu plain text mà lưu hash trong User.refreshHash. Khi refresh, backend verify token bằng secret, tìm user và so sánh refresh token với hash đã lưu.
+
+\subsection{Phân quyền theo chuyến}
+
+Tất cả dữ liệu nhạy cảm của chuyến đi đều gắn với tripId. Backend không tin dữ liệu role do client gửi mà đọc TripMember từ database. TripAccessService trả 404 nếu người dùng không thuộc chuyến hoặc trip không tồn tại, trả 403 nếu có membership nhưng role không đủ.
+
+\subsection{Bảo vệ dữ liệu public}
+
+Trang chia sẻ công khai dùng DTO riêng. PublicTripDto chỉ trả các thông tin cần hiển thị: tên chủ sở hữu, số thành viên, số địa điểm, ngày, places và thông tin guide nếu có. Email thành viên, inviteCode và dữ liệu dành riêng cho thành viên không được đưa ra public.
+
+\subsection{Xử lý lỗi người dùng}
+
+Các lỗi được viết theo ngôn ngữ gần với tình huống thực tế, ví dụ:
+
+\begin{itemize}
+  \item Ngày kết thúc phải sau ngày bắt đầu.
+  \item Không tìm thấy người dùng với email này.
+  \item Có người không phải thành viên chuyến đi.
+  \item Cần ít nhất hai địa điểm có tọa độ để tối ưu.
+  \item Tài khoản FREE đã dùng hết lượt AI trong ngày.
+\end{itemize}
+
+Nhờ vậy UI có thể hiển thị trực tiếp thông báo lỗi mà không cần ánh xạ phức tạp.
+
+\section{Thiết kế frontend và quản lý trạng thái}
+
+Frontend web được thiết kế theo route của Next.js App Router. Các trang có tính tĩnh hoặc public như trang chủ, Explore và public trip ưu tiên render dữ liệu dễ chia sẻ. Các trang yêu cầu tương tác cao như dashboard, chi tiết chuyến đi, AI planner và settings chạy ở phía client để dùng TanStack Query, drag-and-drop, bản đồ và realtime.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.8cm and 1.1cm]
+  \node[softbox] (app) {App Layout\\Providers};
+  \node[box, below left=of app] (home) {Trang chủ\\CTA};
+  \node[box, below=of app] (auth) {Login/Register\\Auth callback};
+  \node[box, below right=of app] (trips) {Trips Dashboard};
+  \node[box, below=of trips] (detail) {Trip Detail\\tabs};
+  \node[box, below left=of detail] (itinerary) {Itinerary\\board + map};
+  \node[box, below=of detail] (expenses) {Expenses\\summary};
+  \node[box, below right=of detail] (booking) {Checklist\\booking};
+  \node[box, right=1.3cm of detail] (ai) {AI Planner};
+  \node[box, left=1.3cm of detail] (public) {Explore\\Public Trip};
+
+  \draw[flowarrow] (app) -- (home);
+  \draw[flowarrow] (app) -- (auth);
+  \draw[flowarrow] (app) -- (trips);
+  \draw[flowarrow] (trips) -- (detail);
+  \draw[flowarrow] (detail) -- (itinerary);
+  \draw[flowarrow] (detail) -- (expenses);
+  \draw[flowarrow] (detail) -- (booking);
+  \draw[flowarrow] (app) -- (ai);
+  \draw[flowarrow] (app) -- (public);
+\end{tikzpicture}}
+\caption{Sơ đồ phân cấp route và component frontend}
+\label{fig:frontend-components}
+\end{figure}
+
+Trạng thái frontend được chia thành ba nhóm. Nhóm phiên đăng nhập gồm access token, refresh token và user profile; nhóm dữ liệu server gồm trip list, trip detail, expense summary, checklist và public trip; nhóm trạng thái UI cục bộ gồm modal, tab active, form đang nhập, địa điểm đang kéo thả và marker đang chọn. Cách tách này giúp dữ liệu server không bị trộn với trạng thái giao diện ngắn hạn.
+
+TanStack Query được dùng để cache dữ liệu server theo query key. Khi mutation thành công, frontend invalidate các query liên quan thay vì tự sửa toàn bộ cây dữ liệu phức tạp. Ví dụ, khi thêm Place, query trip detail và route của ngày đó cần được refetch; khi thêm Expense, query expense list và expense summary cần cập nhật; khi checklist thay đổi, chỉ query checklist hoặc trip detail liên quan bị invalidate. Cách này phù hợp với realtime event coarse-grained của backend.
+
+\section{Thiết kế realtime và đồng bộ dữ liệu}
+
+Realtime trong \ProjectName{} không truyền toàn bộ bản ghi vừa thay đổi mà chỉ phát sự kiện theo nhóm nghiệp vụ. Mỗi chuyến đi tương ứng một room \texttt{trip:<tripId>}. Client chỉ được join room nếu token hợp lệ và người dùng là thành viên của chuyến. Khi có sự kiện \texttt{itinerary:changed}, \texttt{expenses:changed}, \texttt{checklist:changed}, \texttt{members:changed} hoặc \texttt{trip:updated}, frontend refetch dữ liệu tương ứng.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.85cm and 1.1cm]
+  \node[actorbox] (clientA) {Client A\\người sửa};
+  \node[box, right=of clientA] (api) {REST API\\mutation};
+  \node[box, right=of api] (service) {Service\\transaction};
+  \node[box, right=of service] (gateway) {TripsGateway\\room trip:id};
+  \node[actorbox, right=of gateway] (clientB) {Client B\\đang xem};
+  \node[softbox, below=of gateway] (query) {Invalidate query\\refetch dữ liệu};
+
+  \draw[flowarrow] (clientA) -- node[above, font=\scriptsize]{request + socketId} (api);
+  \draw[flowarrow] (api) -- (service);
+  \draw[flowarrow] (service) -- node[above, font=\scriptsize]{ok} (gateway);
+  \draw[flowarrow] (gateway) -- node[above, font=\scriptsize]{event} (clientB);
+  \draw[flowarrow] (clientB) -- (query);
+\end{tikzpicture}}
+\caption{Cơ chế realtime theo room chuyến đi}
+\label{fig:realtime-flow}
+\end{figure}
+
+Thiết kế này không giải quyết conflict ở mức ký tự như các công cụ soạn thảo realtime, nhưng phù hợp với bài toán lịch trình du lịch. Các thay đổi chủ yếu là thêm, sửa, xóa hoặc sắp xếp địa điểm; khi conflict xảy ra, nguồn sự thật vẫn là database và frontend refetch lại trạng thái mới nhất.
+
+\section{Thiết kế triển khai}
+
+Môi trường triển khai được chia thành các khối rõ ràng: frontend Next.js, backend NestJS, PostgreSQL, Redis, provider bản đồ, provider AI và provider thanh toán. Trong bản MVP, các provider ngoài đều có fallback hoặc mock ở môi trường phát triển để nhóm có thể demo khi thiếu khóa dịch vụ thật.
+
+\begin{longtable}{|P{3.7cm}|P{5.2cm}|P{6.5cm}|}
+\caption{Thành phần triển khai và trách nhiệm}\\
+\hline
+\textbf{Thành phần} & \textbf{Công nghệ} & \textbf{Trách nhiệm chính}\\
+\hline
+\endfirsthead
+\hline
+\textbf{Thành phần} & \textbf{Công nghệ} & \textbf{Trách nhiệm chính}\\
+\hline
+\endhead
+Web app & Next.js, React, Tailwind, TanStack Query & Giao diện người dùng, routing, cache API, bản đồ, kéo thả và hiển thị realtime.\\
+\hline
+API server & NestJS, Prisma, Zod, JWT & Xử lý nghiệp vụ, xác thực, phân quyền, transaction và DTO.\\
+\hline
+Database & PostgreSQL & Lưu dữ liệu quan hệ: user, trip, day, place, expense, checklist, guide, payment.\\
+\hline
+Realtime & Redis, Socket.IO & Room theo trip, phát event khi lịch trình/chi phí/checklist/thành viên thay đổi.\\
+\hline
+Provider ngoài & Goong/Nominatim, AI provider & Địa điểm, route, AI planner và gợi ý địa điểm.\\
+\hline
+Mobile MVP & Expo React Native & Đăng nhập và xem danh sách chuyến đi ở mức scaffold mở rộng.\\
+\hline
+\end{longtable}
+
+\section{Thiết kế lớp miền nghiệp vụ}
+
+Các lớp miền nghiệp vụ được tách theo module để tránh gom toàn bộ logic vào một service lớn. TripAccessService chịu trách nhiệm kiểm tra quyền theo trip; TripsService quản lý Trip, Day, Place; ExpensesService tính summary; ImportService xử lý booking; AiService điều phối job. Cách chia này giúp thay đổi từng miền mà ít ảnh hưởng đến phần còn lại.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[node distance=0.85cm and 1.0cm]
+  \node[softbox] (access) {TripAccessService\\checkMember\\requireRole};
+  \node[box, below left=of access] (trips) {TripsService\\create/update/detail\\clone/public};
+  \node[box, below=of access] (places) {PlacesService\\create/reorder\\route/optimize};
+  \node[box, below right=of access] (expenses) {ExpensesService\\list/summary\\settlement};
+  \node[box, below=of trips] (import) {ImportService\\parse booking\\create attachment};
+  \node[box, below=of places] (ai) {AiService\\generate job\\suggest places};
+  \node[box, below=of expenses] (billing) {BillingService\\checkout\\webhook};
+  \node[softbox, below=of ai] (prisma) {PrismaService\\transaction/query};
+  \node[softbox, right=of billing] (gateway) {TripsGateway\\emit events};
+
+  \draw[flowarrow] (access) -- (trips);
+  \draw[flowarrow] (access) -- (places);
+  \draw[flowarrow] (access) -- (expenses);
+  \draw[flowarrow] (trips) -- (prisma);
+  \draw[flowarrow] (places) -- (prisma);
+  \draw[flowarrow] (expenses) -- (prisma);
+  \draw[flowarrow] (import) -- (places);
+  \draw[flowarrow] (import) -- (expenses);
+  \draw[flowarrow] (ai) -- (trips);
+  \draw[flowarrow] (ai) -- (places);
+  \draw[flowarrow] (billing) -- (prisma);
+  \draw[dashedrel] (places) -- (gateway);
+  \draw[dashedrel] (expenses) -- (gateway);
+  \draw[dashedrel] (trips) -- (gateway);
+\end{tikzpicture}}
+\caption{Sơ đồ phụ thuộc giữa các service nghiệp vụ}
+\label{fig:domain-services}
+\end{figure}
+
+\subsection{Nguyên tắc tách trách nhiệm service}
+
+TripsService chỉ xử lý dữ liệu cấp chuyến đi và những dữ liệu phải tạo cùng chuyến như Day và TripMember OWNER. PlacesService không tự quyết định người dùng có quyền hay không mà gọi lớp kiểm tra quyền, sau đó xử lý các thao tác liên quan Place, route và expense mirror. ExpensesService tập trung vào tính toán tài chính nhóm, bao gồm tổng chi, phần chia, net balance và settlement. ImportService không lưu dữ liệu booking một cách tùy tiện; nó parse nội dung, ánh xạ sang Place/Attachment/Expense rồi dùng service tương ứng để bảo đảm cùng quy tắc nghiệp vụ.
+
+AiService được tách riêng vì luồng AI có độ trễ cao và phụ thuộc provider ngoài. Service này kiểm tra quota, tạo job, cập nhật progress và chỉ ghi dữ liệu chuyến đi khi kết quả đã qua bước chuẩn hóa. Nhờ vậy lỗi AI không làm hỏng dữ liệu Trip hiện có.
+
+\subsection{Điểm kiểm soát transaction}
+
+Những thao tác tạo hoặc cập nhật nhiều bảng cần dùng transaction. Tạo Trip phải tạo kèm Day và TripMember OWNER. Cập nhật khoảng ngày phải thêm/xóa Day, đồng thời chuyển Place ở ngày bị xóa về vùng chưa xếp. Kéo thả lịch trình phải cập nhật nhiều Place theo đúng thứ tự mới. Import booking có thể tạo Attachment, Place và Expense liên quan. AI planner khi hoàn tất phải tạo Trip, Day, Place và ChecklistItem từ một kết quả đã xác minh. Các điểm transaction này giúp hệ thống tránh trạng thái dữ liệu dang dở khi một bước giữa chừng thất bại.
+
+\chapter{DEMO GIAO DIỆN}
+
+\section{Tổng quan giao diện}
+
+Web app là sản phẩm chính của đồ án. Người dùng bắt đầu từ trang đăng ký/đăng nhập, vào dashboard để tạo hoặc mở chuyến đi, sau đó thao tác chủ yếu trong trang chi tiết chuyến. Trang chi tiết được chia thành các tab lớn: Lịch trình, Chi phí, Checklist và Đặt chỗ. Cách bố trí này phù hợp với luồng chuẩn bị chuyến đi thật, vì người dùng có thể vừa xem ngày đi, địa điểm, bản đồ, chi phí và việc cần chuẩn bị trong cùng một không gian.
+
+Ngoài các màn hình lõi, hệ thống còn có trang AI planner để tạo lịch trình tự động, Explore/public trip để chia sẻ và remix lịch trình, Settings để cập nhật hồ sơ.
+
+\section{Các chức năng lõi đã xây dựng}
+
+\textbf{Đăng ký, đăng nhập và quản lý phiên.} Người dùng có thể tạo tài khoản bằng email/password, đăng nhập, refresh token và khôi phục phiên khi reload trình duyệt. Backend hash mật khẩu và refresh token, còn frontend lưu phiên để gắn access token vào các request cần xác thực.
+
+\textbf{Dashboard và tạo chuyến đi.} Dashboard hiển thị các chuyến người dùng sở hữu hoặc tham gia. Khi tạo chuyến, người dùng nhập tên, điểm đến, ngày đi, ngày về, ngân sách và ảnh bìa. Backend tạo Trip, TripMember OWNER và danh sách Day tương ứng, giúp người dùng mở trang chi tiết ngay sau khi tạo.
+
+\textbf{Lịch trình kéo thả và bản đồ.} Đây là chức năng trung tâm của hệ thống. Người dùng thêm địa điểm vào từng ngày hoặc lưu ở vùng chưa xếp, sau đó kéo thả để điều chỉnh thứ tự. Những địa điểm có tọa độ được hiển thị trên bản đồ bằng marker; route path và route legs giúp người dùng đánh giá thứ tự di chuyển.
+
+\textbf{Cộng tác nhóm.} Chủ chuyến hoặc thành viên có quyền chỉnh sửa có thể mời người khác bằng email hoặc link. Mỗi thành viên có role riêng trong chuyến. Khi dữ liệu lịch trình, chi phí, checklist hoặc thành viên thay đổi, server phát realtime event để các client đang mở chuyến refetch dữ liệu mới.
+
+\textbf{Chi phí và chia tiền.} Tab Chi phí cho phép thêm khoản chi, chọn người trả trước và danh sách người cùng chia. Backend tính tổng chi phí, chi phí theo danh mục, phần mỗi người đã trả/phải chịu, net balance và danh sách chuyển tiền tối giản. Nếu địa điểm hoặc booking có chi phí, hệ thống có thể tự đồng bộ sang Expense để không bỏ sót ngân sách.
+
+\textbf{Checklist và booking.} Checklist được chia thành TODO và PACKING để nhóm chuẩn bị trước chuyến đi. Booking/attachment lưu xác nhận đặt chỗ, link hoặc thông tin vé/khách sạn. Luồng import booking text giúp giảm nhập tay bằng cách phân tích nội dung xác nhận và tạo dữ liệu phù hợp.
+
+\textbf{AI planner và gợi ý địa điểm.} Người dùng nhập điểm đến, thời gian, ngân sách, số người, sở thích và nhịp đi. Backend tạo job bất đồng bộ, xử lý từng stage và lưu kết quả thành chuyến đi thật. Trong trang chi tiết chuyến, AI suggestion hỗ trợ đề xuất thêm địa điểm theo prompt của người dùng.
+
+\section{Kịch bản demo rút gọn}
+
+Kịch bản demo nên dùng một chuyến đi 3 ngày với 3 thành viên, khoảng 8 địa điểm, 4 khoản chi, một checklist và một booking. Các bước trình bày gồm: đăng nhập, tạo chuyến, mời thành viên, thêm địa điểm, kéo thả lịch trình, xem bản đồ, thêm chi phí, xem khoản chia tiền, tick checklist, import booking, bật public link và tạo lịch trình bằng AI. Bộ dữ liệu này đủ chứng minh workflow chính mà không cần trình bày quá nhiều tính năng phụ.
+
+\section{Kiểm thử và đánh giá}
+
+\subsection{Chiến lược kiểm thử}
+
+Dự án sử dụng nhiều mức kiểm thử:
+
+\begin{itemize}
+  \item \textbf{Static type check}: TypeScript kiểm tra kiểu dữ liệu giữa frontend, backend và package dùng chung.
+  \item \textbf{Schema validation}: Zod schema kiểm tra input ngay ở biên API.
+  \item \textbf{Unit test frontend helper}: kiểm tra date input, auth bootstrap guard, public trips, landing CTA, trip actions.
+  \item \textbf{Build verification}: Next.js build phát hiện lỗi route, import, server/client component và lỗi compile.
+  \item \textbf{Manual end-to-end}: chạy API/web, đăng nhập, tạo trip, thêm địa điểm, kéo thả, xem bản đồ, thêm expense, chia sẻ public, clone và tạo AI trip.
+\end{itemize}
+
+\subsection{Kịch bản kiểm thử chính}
+
+Các kịch bản kiểm thử được gom theo nhóm chức năng để tránh lặp lại từng endpoint nhỏ. Nhóm xác thực kiểm tra đăng ký tài khoản mới, đăng nhập sai mật khẩu, refresh token và logout. Nhóm chuyến đi kiểm tra tạo chuyến hợp lệ, từ chối ngày kết thúc trước ngày bắt đầu, đồng bộ Day và role OWNER. Nhóm lịch trình kiểm tra thêm địa điểm, kéo thả giữa các ngày, xóa địa điểm có chi phí liên kết và cập nhật bản đồ.
+
+Nhóm cộng tác kiểm tra join bằng inviteCode, quyền VIEWER không được chỉnh sửa và realtime event làm client khác refetch dữ liệu. Nhóm chi phí kiểm tra tạo expense, từ chối payer không thuộc trip, tính net balance và ghi settlement. Nhóm public/AI kiểm tra trip PRIVATE không xem public được, clone trip public tạo bản sao độc lập, tài khoản FREE hết lượt AI bị từ chối và job AI thành công có resultTripId. Nhóm thanh toán kiểm tra webhook SePay hợp lệ, transactionId trùng không gia hạn PRO lần hai.
+
+\subsection{Đánh giá kết quả}
+
+So với mục tiêu ban đầu, hệ thống đạt được các kết quả chính:
+
+\begin{itemize}
+  \item Hoàn thiện luồng tạo và quản lý chuyến đi theo ngày.
+  \item Có bản đồ đồng bộ với lịch trình, hỗ trợ marker, route path, route legs và lodging anchor.
+  \item Có cơ chế cộng tác theo thành viên và realtime event.
+  \item Có sổ chi tiêu nhóm với thuật toán tính nợ rõ ràng.
+  \item Có checklist và booking/attachment giúp chuyến đi không chỉ là lịch tham quan.
+  \item Có chia sẻ công khai, Explore và clone để tái sử dụng lịch trình.
+  \item Có AI planner chạy bất đồng bộ, có progress, fallback và metadata.
+\end{itemize}
+
+\subsection{Hạn chế}
+
+\begin{itemize}
+  \item Mobile app mới ở mức scaffold, chưa có đầy đủ parity với web.
+  \item Purchase guide có phí đang dùng mock provider trong MVP, chưa tích hợp cổng thanh toán thật riêng cho guide.
+  \item Tối ưu route phụ thuộc chất lượng tọa độ và provider distance matrix.
+  \item AI planner phụ thuộc cấu hình provider ngoài; nếu thiếu web research hoặc citation đáng tin, hệ thống có thể phải fallback hoặc trả lỗi.
+  \item Offline snapshot mới phục vụ xem nội dung, chưa hỗ trợ chỉnh sửa offline và merge thay đổi khi online lại.
+  \item Attachment hiện thiên về link/metadata, chưa có hệ thống lưu file production như object storage.
+\end{itemize}
+
+\frontchapter{KẾT LUẬN}
+
+\section*{1. Kết quả đạt được}
+\addcontentsline{toc}{section}{1. Kết quả đạt được}
+
+Đồ án đã xây dựng được nền tảng \ProjectName{} phục vụ lập kế hoạch du lịch nhóm trên web. Hệ thống giải quyết các nhu cầu cốt lõi của người dùng: tạo chuyến đi, mời thành viên, lên lịch theo ngày, xem bản đồ, quản lý chi phí, checklist, booking, chia sẻ lịch trình, remix lịch trình và sử dụng AI để tự động hóa việc lập kế hoạch.
+
+Về mặt kỹ thuật, hệ thống có kiến trúc rõ ràng: Next.js frontend, NestJS backend, PostgreSQL/Prisma, Redis/Socket.IO, shared DTO bằng Zod và các provider ngoài cho bản đồ, AI, thanh toán và booking. CSDL được thiết kế theo miền nghiệp vụ, với Trip làm trung tâm và các bảng con liên kết rõ ràng. Các quy tắc phân quyền, cascade, unique index và transaction giúp dữ liệu ổn định trong các thao tác nhiều người dùng.
+
+\section*{2. Hạn chế}
+\addcontentsline{toc}{section}{2. Hạn chế}
+
+Một số hạn chế còn tồn tại gồm: mobile chưa hoàn thiện đầy đủ chức năng, thanh toán guide có phí chưa tích hợp provider thật, AI planner phụ thuộc dữ liệu ngoài và route optimization phụ thuộc tọa độ/provider. Ngoài ra, offline hiện chủ yếu phục vụ xem snapshot, chưa phải offline-first sync.
+
+\section*{3. Hướng phát triển}
+\addcontentsline{toc}{section}{3. Hướng phát triển}
+
+Trong các giai đoạn tiếp theo, hệ thống có thể phát triển theo các hướng:
+
+\begin{itemize}
+  \item Hoàn thiện mobile app với đầy đủ lịch trình, bản đồ, chi phí, checklist và realtime.
+  \item Bổ sung lưu trữ file production cho attachment, hỗ trợ upload PDF/ảnh booking.
+  \item Nghiên cứu mô hình thương mại hóa như gói PRO, guide trả phí hoặc liên kết đặt chỗ.
+  \item Cải thiện AI planner bằng dữ liệu đánh giá thực tế, citation mạnh hơn và cơ chế người dùng đánh giá gợi ý.
+  \item Hỗ trợ offline edit và đồng bộ thay đổi khi có mạng.
+  \item Bổ sung tính năng vote địa điểm, bình luận trong chuyến và lịch trình mẫu theo vùng miền.
+  \item Tối ưu hiệu năng bản đồ khi chuyến có nhiều địa điểm.
+\end{itemize}
+
+\frontchapter{TÀI LIỆU THAM KHẢO}
+
+\begin{enumerate}
+  \item Next.js Documentation. \url{https://nextjs.org/docs}
+  \item React Documentation. \url{https://react.dev}
+  \item NestJS Documentation. \url{https://docs.nestjs.com}
+  \item Prisma Documentation. \url{https://www.prisma.io/docs}
+  \item PostgreSQL Documentation. \url{https://www.postgresql.org/docs}
+  \item Socket.IO Documentation. \url{https://socket.io/docs}
+  \item TanStack Query Documentation. \url{https://tanstack.com/query/latest/docs/framework/react/overview}
+  \item MapLibre GL JS Documentation. \url{https://maplibre.org/maplibre-gl-js/docs}
+  \item dnd-kit Documentation. \url{https://docs.dndkit.com}
+  \item Zod Documentation. \url{https://zod.dev}
+  \item Goong API Documentation. \url{https://docs.goong.io}
+  \item SePay Webhook Documentation. \url{https://sepay.vn}
+\end{enumerate}
+
+\end{document}

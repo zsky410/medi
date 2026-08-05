@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Mê Đi (medi) - Travel planning SaaS",
   "scripts": {
-    "dev": "node scripts/wait-for-deps.mjs && node scripts/free-dev-ports.mjs && turbo run dev --filter=@medi/api --filter=@medi/web",
+    "dev": "node scripts/wait-for-deps.mjs && node scripts/free-dev-ports.mjs && node scripts/dev.mjs",
     "dev:all": "turbo run dev",
     "dev:stop": "node scripts/free-dev-ports.mjs",
     "dev:setup": "pnpm dev",

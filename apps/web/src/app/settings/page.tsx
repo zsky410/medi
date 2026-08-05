@@ -244,7 +244,11 @@ function SettingsContent() {
                   <> · Gia hạn {formatDateTime(subscription.renewsAt)}</>
                 )}
               </p>
-              {user.plan === "PRO" ? (
+              {user.plan === "PRO" && subscription?.provider === "sepay" ? (
+                <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700">
+                  PRO đã thanh toán qua SePay. Huỷ/gia hạn thủ công sẽ xử lý qua hỗ trợ.
+                </div>
+              ) : user.plan === "PRO" ? (
                 <Button
                   variant="secondary"
                   onClick={() => portalMutation.mutate()}

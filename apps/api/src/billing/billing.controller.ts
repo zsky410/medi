@@ -1,20 +1,31 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   Headers,
   HttpCode,
+  Param,
   Post,
   Query,
-  RawBodyRequest,
-  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
-import type { Request, Response } from "express";
+import type { Response } from "express";
+import type { CreateCheckoutInput, SepayWebhookDto } from "@medi/types";
 import { JwtGuard } from "../auth/jwt.guard";
 import { CurrentUser, type JwtUser } from "../common/current-user.decorator";
 import { BillingService } from "./billing.service";
+
+function webhookSecretFromHeaders(
+  headerSecret: string | undefined,
+  authorization: string | undefined,
+  querySecret: string | undefined,
+): string | undefined {
+  if (headerSecret) return headerSecret;
+  const match = authorization?.match(/^Apikey\s+(.+)$/i);
+  return match?.[1]?.trim() || querySecret;
+}
 
 @Controller("billing")
 export class BillingController {
@@ -34,8 +45,20 @@ export class BillingController {
 
   @UseGuards(JwtGuard)
   @Post("checkout")
-  checkout(@CurrentUser() user: JwtUser) {
-    return this.billing.createCheckout(user.id);
+  checkout(@CurrentUser() user: JwtUser, @Body() input: CreateCheckoutInput | undefined) {
+    return this.billing.createCheckout(user.id, input);
+  }
+
+  @UseGuards(JwtGuard)
+  @Get("checkout/:id")
+  checkoutDetail(@CurrentUser() user: JwtUser, @Param("id") id: string) {
+    return this.billing.getSepayCheckout(user.id, id);
+  }
+
+  @UseGuards(JwtGuard)
+  @Get("checkout/:id/status")
+  checkoutStatus(@CurrentUser() user: JwtUser, @Param("id") id: string) {
+    return this.billing.getSepayCheckoutStatus(user.id, id);
   }
 
   @Get("mock/complete")
@@ -45,14 +68,32 @@ export class BillingController {
     res.redirect(redirectUrl);
   }
 
-  @Post("webhook/stripe")
+  @Post("webhook/sepay")
   @HttpCode(200)
-  async stripeWebhook(
-    @Req() req: RawBodyRequest<Request>,
-    @Headers("stripe-signature") signature: string | undefined,
+  async sepayWebhook(
+    @Body() payload: SepayWebhookDto,
+    @Headers("x-sepay-secret") headerSecret: string | undefined,
+    @Headers("authorization") authorization: string | undefined,
+    @Query("token") querySecret: string | undefined,
   ) {
-    if (!req.rawBody || !signature) throw new BadRequestException("Thiếu chữ ký webhook");
-    await this.billing.handleStripeWebhook(req.rawBody, signature);
-    return { received: true };
+    await this.billing.handleSepayWebhook(payload, webhookSecretFromHeaders(headerSecret, authorization, querySecret));
+    return { success: true };
+  }
+}
+
+@Controller("webhooks")
+export class SepayWebhookController {
+  constructor(private readonly billing: BillingService) {}
+
+  @Post("sepay")
+  @HttpCode(200)
+  async sepayWebhook(
+    @Body() payload: SepayWebhookDto,
+    @Headers("x-sepay-secret") headerSecret: string | undefined,
+    @Headers("authorization") authorization: string | undefined,
+    @Query("token") querySecret: string | undefined,
+  ) {
+    await this.billing.handleSepayWebhook(payload, webhookSecretFromHeaders(headerSecret, authorization, querySecret));
+    return { success: true };
   }
 }

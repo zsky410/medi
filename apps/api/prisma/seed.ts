@@ -16,7 +16,6 @@ async function main() {
     update: {},
     create: { email: "ban@medi.app", name: "Bạn Đồng Hành", passwordHash: password },
   });
-
   console.log("Seeded demo users:");
   console.log("  demo@medi.app / medi1234");
   console.log("  ban@medi.app  / medi1234");

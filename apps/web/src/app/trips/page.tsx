@@ -74,16 +74,13 @@ function NewTripModal({ open, onClose }: { open: boolean; onClose: () => void })
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!selectedCover) {
-      setError("Vui lòng tải lên ảnh bìa cho sổ tay");
-      return;
-    }
+    setError("");
     mutation.mutate({
       title,
       destination: `${origin} → ${dest}`,
       startDate,
       endDate,
-      coverImage: selectedCover,
+      coverImage: selectedCover ?? undefined,
       ...(budget.trim() ? { budgetAmount: Number(budget.replace(/\D/g, "")), budgetCurrency: "VND" } : {}),
     });
   }
@@ -140,7 +137,7 @@ function NewTripModal({ open, onClose }: { open: boolean; onClose: () => void })
         </div>
 
         <div>
-          <Label>Chọn bìa sổ tay của bạn</Label>
+          <Label>Chọn bìa sổ tay (tuỳ chọn)</Label>
           <input
             key={coverInputKey}
             type="file"
@@ -180,7 +177,7 @@ function NewTripModal({ open, onClose }: { open: boolean; onClose: () => void })
             >
               <UploadCloud size={28} className="text-[#8A7563] group-hover:text-brand-500 transition-colors" />
               <div>
-                <p className="text-xs font-bold text-[#2B2118]">Tải lên ảnh bìa riêng của bạn</p>
+                <p className="text-xs font-bold text-[#2B2118]">Tải lên ảnh bìa riêng nếu bạn muốn</p>
                 <p className="text-[10px] font-semibold text-[#8A7563] mt-0.5">Hỗ trợ JPG, PNG, WEBP (tự động nén tối ưu)</p>
               </div>
             </label>

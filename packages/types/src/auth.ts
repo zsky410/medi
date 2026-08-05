@@ -15,13 +15,16 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export type Plan = "FREE" | "PRO";
 export type AuthProvider = "LOCAL" | "GOOGLE";
+export type SystemRole = "USER";
 
 export interface UserDto {
   id: string;
   email: string;
   name: string;
   avatarUrl: string | null;
+  role: SystemRole;
   plan: Plan;
+  proExpiresAt: string | null;
   authProvider: AuthProvider;
   defaultCurrency: string;
   locale: string;

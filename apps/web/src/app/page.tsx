@@ -1,15 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
 import { PublicTripGrid } from "@/components/public-trip-grid";
 import { Button, Spinner } from "@/components/ui";
+import { hasStoredSession } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { landingPrimaryCtaPath } from "@/lib/landing-cta";
 import { fetchPublicTrips } from "@/lib/public-trips";
 import { ArrowRight, MapPinned, Users2, Wallet, ClipboardCheck } from "lucide-react";
 
 const DAY_COLORS = ["#FF6B2C", "#FF3D77", "#8B5CF6", "#0EA5E9", "#84CC16", "#FFC93C"];
+
+const LANDING_AVATARS = [
+  "https://randomuser.me/api/portraits/women/44.jpg",
+  "https://randomuser.me/api/portraits/men/32.jpg",
+  "https://randomuser.me/api/portraits/women/68.jpg",
+  "https://randomuser.me/api/portraits/men/75.jpg",
+  "https://randomuser.me/api/portraits/women/12.jpg",
+];
 
 const UNSPLASH = {
   dalat1: "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=400&h=300&fit=crop&auto=format",
@@ -98,12 +110,17 @@ const STEPS = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const { data: publicTrips, isError, isLoading } = useQuery({
     queryKey: ["public-trips", "landing"],
     queryFn: () => fetchPublicTrips({ limit: 4 }),
   });
   const tickerText = "🧳 Cùng hội bạn chốt lịch trình · 🗺️ Gom địa điểm vào một bản đồ · 💸 Chia tiền rõ ràng · 🔥 Chia sẻ kèo miễn phí · ";
   const repeatedTicker = tickerText.repeat(6);
+  const goToPrimaryCta = () => {
+    router.push(landingPrimaryCtaPath({ user, hasStoredSession: hasStoredSession() }));
+  };
 
   return (
     <div className="min-h-dvh flex flex-col bg-[#FFF9F2] overflow-x-hidden">
@@ -128,11 +145,13 @@ export default function LandingPage() {
                 Lịch trình · bản đồ · chia tiền · checklist — tất cả trong một chỗ. Thả thính, cả nhóm đồng ý, chốt đi liền!
               </p>
               <div className="flex flex-wrap gap-4 items-center">
-                <Link href="/register">
-                  <Button className="px-8 py-4 text-lg font-extrabold shadow-lg shadow-brand-500/20 hover:scale-105 transition-all btn-primary-glow">
-                    Bắt đầu lên kèo ✈️
-                  </Button>
-                </Link>
+                <Button
+                  type="button"
+                  onClick={goToPrimaryCta}
+                  className="px-8 py-4 text-lg font-extrabold shadow-lg shadow-brand-500/20 hover:scale-105 transition-all btn-primary-glow"
+                >
+                  Bắt đầu lên kèo ✈️
+                </Button>
                 <Link
                   href="/explore"
                   className="px-6 py-4 text-base font-extrabold text-[#FF6B2C] hover:text-[#E8551A] transition-colors flex items-center gap-2"
@@ -142,14 +161,14 @@ export default function LandingPage() {
               </div>
               <div className="flex items-center gap-4 mt-8">
                 <div className="flex -space-x-2">
-                  {["#FF6B2C", "#FF3D77", "#8B5CF6", "#0EA5E9", "#84CC16"].map((c, i) => (
-                    <div
-                      key={i}
-                      className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-extrabold shadow-sm"
-                      style={{ background: c }}
-                    >
-                      {["A", "B", "C", "D", "E"][i]}
-                    </div>
+                  {LANDING_AVATARS.map((src, i) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={src}
+                      src={src}
+                      alt={`Bạn đồng hành ${i + 1}`}
+                      className="size-8 rounded-full border-2 border-white object-cover shadow-sm ring-1 ring-[#F3E3D3]"
+                    />
                   ))}
                 </div>
                 <p className="text-[#8A7563] text-sm font-bold">
@@ -389,13 +408,13 @@ export default function LandingPage() {
                   <Sticker color="#FF6B2C" rotate={12}>Best deal 🔥</Sticker>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-[#8A7563] mb-0.5 italic">rẻ hơn 1 bữa lẩu mỗi tháng</p>
+                  <p className="text-xs font-bold text-[#8A7563] mb-0.5 italic">tuần · tháng · năm, tính năng như nhau</p>
                   <h3 className="font-display font-extrabold text-xl text-[#2B2118] mb-1">Mê Đi PRO</h3>
                   <div className="font-display font-extrabold text-3xl mb-1">
-                    <span className="gradient-text">399.000 ₫</span>
-                    <span className="text-base font-bold text-[#8A7563]">/năm</span>
+                    <span className="gradient-text">69.000 ₫</span>
+                    <span className="text-base font-bold text-[#8A7563]">/tuần</span>
                   </div>
-                  <p className="text-xs font-bold text-[#8A7563] mb-5">≈ 33.000 ₫/tháng</p>
+                  <p className="text-xs font-bold text-[#8A7563] mb-5">tháng 129.000 ₫ · năm 399.000 ₫</p>
                   <ul className="space-y-3 mb-8">
                     {[
                       "✅ Tất cả tính năng Free",
@@ -424,7 +443,7 @@ export default function LandingPage() {
                     </Button>
                   </Link>
                   <div className="flex justify-center gap-2 mt-3.5">
-                    {["💳 Card", "MoMo", "VNPay", "Zalo"].map((m, i) => (
+                    {["SePay", "VietQR", "Chuyển khoản"].map((m, i) => (
                       <span
                         key={i}
                         className="text-[9px] bg-[#FFF3EB] text-[#8A7563] px-2 py-0.5 rounded-full border border-[#F3E3D3] font-bold"

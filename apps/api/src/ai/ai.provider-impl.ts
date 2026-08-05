@@ -191,16 +191,25 @@ export class OpenAiProvider implements AiProvider {
   readonly name = "openai" as const;
   private readonly logger = new Logger(OpenAiProvider.name);
   private readonly model: string;
+  private readonly baseUrl: string;
 
   constructor(
     private readonly apiKey: string,
     model?: string,
+    baseUrl?: string,
   ) {
     this.model = model ?? "gpt-4o-mini";
+    this.baseUrl = (baseUrl ?? "https://api.openai.com").replace(/\/+$/, "");
+  }
+
+  private chatCompletionsUrl(): string {
+    return this.baseUrl.endsWith("/v1")
+      ? `${this.baseUrl}/chat/completions`
+      : `${this.baseUrl}/v1/chat/completions`;
   }
 
   private async chatJson<T>(system: string, user: string): Promise<T> {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(this.chatCompletionsUrl(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
@@ -231,7 +240,7 @@ export class OpenAiProvider implements AiProvider {
     const fallback = new MockAiProvider();
     try {
       const plan = await this.chatJson<OpenAiJsonPlan>(
-        `You are a Vietnam travel planner. Return JSON with: title, destination, dayCount (1-14), budget (VND number or null), places array with name, category (ATTRACTION|FOOD|LODGING|TRANSPORT|OTHER), lat, lng, note, cost. Use real coordinates in Vietnam.`,
+        `You are a practical Vietnam travel planner. Return only JSON with: title, destination, dayCount (1-14), budget (VND number or null), places array with name, category (ATTRACTION|FOOD|LODGING|TRANSPORT|SHOPPING|OTHER), lat, lng, note, cost. Respect the requested dates, total budget, interests, party size, and notes. Use real coordinates in Vietnam.`,
         prompt,
       );
       const template = matchTemplate(prompt);
@@ -276,7 +285,11 @@ export class OpenAiProvider implements AiProvider {
 export function createAiProvider(config: ConfigService): AiProvider {
   const key = config.get<string>("OPENAI_API_KEY");
   if (key) {
-    return new OpenAiProvider(key, config.get<string>("OPENAI_MODEL") ?? undefined);
+    return new OpenAiProvider(
+      key,
+      config.get<string>("OPENAI_MODEL") ?? undefined,
+      config.get<string>("OPENAI_BASE_URL") ?? undefined,
+    );
   }
   return new MockAiProvider();
 }

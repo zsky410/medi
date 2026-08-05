@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { FREE_FEATURES, PRO_FEATURES, PRO_PRICE_VND, type CheckoutSessionDto } from "@medi/types";
+import { FREE_FEATURES, PRO_FEATURES, PRO_PLANS, type CheckoutSessionDto, type ProBillingPeriod } from "@medi/types";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
@@ -14,10 +14,22 @@ function PricingContent() {
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [redirecting, setRedirecting] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<ProBillingPeriod>("YEAR");
 
   const success = searchParams.get("success") === "1";
   const canceled = searchParams.get("canceled") === "1";
   const isPro = user?.plan === "PRO";
+  const selectedPlan = PRO_PLANS.find((plan) => plan.period === selectedPeriod) ?? PRO_PLANS[2];
+  const monthPlan = PRO_PLANS.find((plan) => plan.period === "MONTH") ?? PRO_PLANS[1];
+  const weekPlan = PRO_PLANS.find((plan) => plan.period === "WEEK") ?? PRO_PLANS[0];
+  const yearlySavings = monthPlan.price * 12 - selectedPlan.price;
+  const monthlySavings = weekPlan.price * 4 - selectedPlan.price;
+  const savingsNote =
+    selectedPeriod === "YEAR"
+      ? `Tiết kiệm ${formatMoney(yearlySavings)} so với trả theo tháng`
+      : selectedPeriod === "MONTH"
+        ? `Tiết kiệm ${formatMoney(monthlySavings)} so với trả theo tuần`
+        : "Linh hoạt nhất cho chuyến đi ngắn";
 
   useEffect(() => {
     if (success) void refreshUser();
@@ -31,7 +43,10 @@ function PricingContent() {
     setRedirecting(true);
     setError("");
     try {
-      const session = await api<CheckoutSessionDto>("/billing/checkout", { method: "POST" });
+      const session = await api<CheckoutSessionDto>("/billing/checkout", {
+        method: "POST",
+        body: JSON.stringify({ period: selectedPeriod }),
+      });
       window.location.href = session.url;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không tạo được phiên thanh toán");
@@ -102,9 +117,29 @@ function PricingContent() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-[#FF3D77]">Mê Đi PRO ✨</h2>
-                <p className="mt-2 text-4xl font-display font-extrabold text-[#2B2118]">{formatMoney(PRO_PRICE_VND)}</p>
-                <p className="text-xs font-bold text-[#8A7563] uppercase tracking-wider">mỗi năm (rẻ hơn 1 bữa lẩu 🍲)</p>
+                <p className="mt-2 text-4xl font-display font-extrabold text-[#2B2118]">{formatMoney(selectedPlan.price)}</p>
+                <p className="text-xs font-bold text-[#8A7563] uppercase tracking-wider">gói {selectedPlan.label.toLowerCase()} · {selectedPlan.durationLabel}</p>
               </div>
+              <div className="grid grid-cols-3 gap-2 rounded-2xl border border-[#F3E3D3] bg-[#FFF9F2] p-1.5">
+                {PRO_PLANS.map((plan) => (
+                  <button
+                    key={plan.period}
+                    type="button"
+                    onClick={() => setSelectedPeriod(plan.period)}
+                    className={`min-w-0 cursor-pointer rounded-xl px-2 py-2 text-center transition ${
+                      selectedPeriod === plan.period
+                        ? "bg-gradient-to-r from-brand-500 to-[#FF3D77] text-white shadow-sm"
+                        : "bg-white text-[#8A7563] hover:text-[#2B2118]"
+                    }`}
+                  >
+                    <span className="block text-xs font-display font-extrabold">{plan.label}</span>
+                    <span className="block text-[10px] font-extrabold">{formatMoney(plan.price)}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="rounded-full bg-brand-50 px-3 py-2 text-center text-xs font-extrabold text-brand-700">
+                {savingsNote}
+              </p>
               <ul className="space-y-3 pt-6 border-t border-[#F3E3D3]">
                 <li className="flex items-start gap-2.5 text-sm font-extrabold text-[#2B2118]">
                   <span className="text-brand-500 text-base">✓</span> Tất cả tính năng miễn phí
@@ -128,7 +163,7 @@ function PricingContent() {
                   disabled={redirecting}
                   className="w-full py-3 text-base bg-gradient-to-r from-brand-500 to-[#FF3D77] text-white hover:from-brand-600 hover:to-[#E8356C] border-none shadow-lg shadow-brand-500/20"
                 >
-                  {redirecting ? "Đang nối chuyến bay..." : "Lên PRO ngay thôi! 🚀"}
+                  {redirecting ? "Đang tạo mã chuyển khoản..." : "Lên PRO qua SePay"}
                 </Button>
               )}
               <ErrorText>{error}</ErrorText>
@@ -138,9 +173,9 @@ function PricingContent() {
 
         {/* Payment Methods Sticker Row */}
         <div className="mt-12 text-center space-y-3">
-          <p className="text-xs font-extrabold text-[#8A7563] uppercase tracking-wider">Hỗ trợ mọi phương thức thanh toán</p>
+          <p className="text-xs font-extrabold text-[#8A7563] uppercase tracking-wider">Thanh toán tự động qua SePay</p>
           <div className="flex flex-wrap justify-center items-center gap-4 opacity-75">
-            {["Stripe", "Visa/MC", "MoMo", "VNPay", "ZaloPay"].map((method) => (
+            {["Chuyển khoản", "VietQR", "SePay webhook"].map((method) => (
               <span key={method} className="bg-white border border-[#F3E3D3] px-3 py-1 rounded-full text-[10px] font-bold text-[#2B2118] shadow-sm">
                 💳 {method}
               </span>

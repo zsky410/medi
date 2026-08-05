@@ -106,17 +106,36 @@ Pha 4–6 đã triển khai (xem chi tiết bên dưới). Các hạng mục ti�
 
 ## Pha 4: AI Assistant
 
-- **Sinh lịch trình từ prompt**: `/ai` — ví dụ "3 ngày Đà Lạt, 5tr". Tạo trip + ngày + địa điểm + checklist.
+- **Sinh lịch trình có ràng buộc**: `/ai` — chọn điểm đến và điểm bắt đầu/nơi ở qua Goong autocomplete, ngày đi, budget tổng, số người, sở thích, nhịp đi và ghi chú. `POST /ai/generate-trip` tạo job async, UI poll `GET /ai/generations/:id` đến khi có trip. AI không được tự lưu tọa độ địa điểm; địa điểm cuối phải resolve qua Goong/catalog trước khi lưu.
 - **Gợi ý địa điểm**: panel AI trong tab Lịch trình của chuyến đi (`POST /ai/trips/:id/suggest-places`).
-- **Tối ưu lộ trình**: nearest-neighbor trên từng ngày (`POST /ai/trips/:id/optimize-route` hoặc nút trên cột ngày cho PRO).
+- **Tối ưu lộ trình**: Distance Matrix Goong khi có key, fallback Haversine; route optimizer dùng cho lịch AI và nút tối ưu ngày (`POST /ai/trips/:id/optimize-route` hoặc nút trên cột ngày cho PRO).
 - **Provider**:
   - `mock` (mặc định) — template địa điểm VN, đủ dev/test
-  - `openai` — điền `OPENAI_API_KEY` (+ tuỳ chọn `OPENAI_MODEL`) để dùng GPT thật; fallback về mock khi lỗi
+  - `openai` — điền `OPENAI_API_KEY`, `OPENAI_BASE_URL` nếu dùng gateway OpenAI-compatible, và `OPENAI_MODEL` để dùng AI thật; fallback về mock khi lỗi upstream
+- **Web research**: bật bằng `AI_WEB_RESEARCH_ENABLED=true`. Backend ưu tiên OpenAI Responses `web_search`, nhưng cũng chấp nhận JSON do model/gateway trả có `citations` URL hợp lệ khi `AI_ACCEPT_MODEL_PROVIDED_CITATIONS=true`. Nếu gateway không hỗ trợ Responses tools, provider retry prompt-only rồi fallback sang `/v1/chat/completions`; output prose kiểu danh sách có `Nguồn (https://...)` cũng được bóc citation. Với gateway chậm/local có thể bật `AI_WEB_RESEARCH_PREFER_CHAT_COMPLETIONS=true` để gọi chat trước. Địa điểm cuối vẫn phải resolve qua Goong/catalog trước khi lưu. Muốn bắt buộc metadata official `web_search_call`/`url_citation`, bật `AI_REQUIRE_OFFICIAL_WEB_SEARCH_EVIDENCE=true`. Chỉ bật Goong-only fallback trong dev bằng `AI_ALLOW_GOONG_ONLY_FALLBACK=true`.
 - **Giới hạn FREE**: 3 lượt AI/ngày; PRO không giới hạn
 
 ```
+OPENAI_BASE_URL=""
 OPENAI_API_KEY=""
-OPENAI_MODEL="gpt-4o-mini"
+OPENAI_MODEL="gpt-5.5"
+AI_WEB_RESEARCH_ENABLED="true"
+AI_WEB_RESEARCH_TIMEOUT_MS="90000"
+AI_WEB_RESEARCH_MAX_CANDIDATES="30"
+AI_WEB_RESEARCH_PREFER_CHAT_COMPLETIONS="false"
+AI_ACCEPT_MODEL_PROVIDED_CITATIONS="true"
+AI_REQUIRE_OFFICIAL_WEB_SEARCH_EVIDENCE="false"
+AI_ALLOW_GOONG_ONLY_FALLBACK="false"
+AI_TRIP_WORKER_AUTOSTART="true"
+AI_NORMALIZATION_TIMEOUT_MS="30000"
+AI_NARRATION_TIMEOUT_MS="30000"
+AI_MAX_RETRIES="1"
+PLACE_SEARCH_RADIUS_METERS="30000"
+PLACE_SEARCH_MAX_CANDIDATES="50"
+PLACE_CACHE_TTL_SECONDS="604800"
+ROUTE_MATRIX_TIMEOUT_MS="20000"
+ROUTE_OPTIMIZATION_ENABLED="true"
+TRIP_DEFAULT_PACE="balanced"
 ```
 
 ## Pha 5: Social / Creator Shop

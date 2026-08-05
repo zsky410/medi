@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ShopService } from "../src/shop/shop.service";
 import { TripsService } from "../src/trips/trips.service";
 
@@ -57,6 +57,63 @@ test("publishing a paid guide moves the source trip out of the free explore pool
       data: { distributionMode: "SHOP_PAID" },
     },
   ]);
+});
+
+test("Creator Shop only lists published guides whose source trip is still public", async () => {
+  let listWhere: unknown;
+  const prisma = {
+    guide: {
+      findMany: async (args: { where: unknown }) => {
+        listWhere = args.where;
+        return [];
+      },
+      count: async (args: { where: unknown }) => {
+        assert.deepEqual(args.where, listWhere);
+        return 0;
+      },
+    },
+  };
+  const service = new ShopService(prisma as never, {} as never);
+
+  await service.listPublished();
+
+  assert.deepEqual(listWhere, {
+    published: true,
+    trip: { visibility: "PUBLIC" },
+  });
+});
+
+test("public guide detail is hidden when the source trip becomes private", async () => {
+  const prisma = {
+    guide: {
+      findUnique: async () => ({
+        id: "guide-1",
+        creatorId: "creator-1",
+        title: "Da Nang food guide",
+        description: null,
+        price: 99000,
+        currency: "VND",
+        published: true,
+        purchaseCount: 0,
+        createdAt: date,
+        creator: { id: "creator-1", name: "Creator" },
+        trip: {
+          id: "trip-1",
+          visibility: "PRIVATE",
+          destination: "Da Nang",
+          coverImage: null,
+          _count: { days: 3, places: 12 },
+        },
+        purchases: [],
+      }),
+    },
+  };
+  const service = new ShopService(prisma as never, {} as never);
+
+  await assert.rejects(
+    () => service.getDetail("guide-1"),
+    (err) => err instanceof NotFoundException && err.message === "Không tìm thấy guide",
+  );
 });
 
 test("Explore only lists public trips that still allow free cloning", async () => {
@@ -152,7 +209,7 @@ test("shop purchase can still clone a monetized source trip", async () => {
         price: 99000,
         currency: "VND",
         published: true,
-        trip: { id: "trip-1", distributionMode: "SHOP_PAID" },
+        trip: { id: "trip-1", visibility: "PUBLIC", distributionMode: "SHOP_PAID" },
       }),
       update: async () => undefined,
     },
@@ -170,6 +227,33 @@ test("shop purchase can still clone a monetized source trip", async () => {
     clonedTripId,
     provider: "mock",
   });
+});
+
+test("shop purchase is hidden when the source trip becomes private", async () => {
+  const trips = {
+    clone: async () => {
+      throw new Error("private source trips must not be cloned through shop purchase");
+    },
+  };
+  const prisma = {
+    guide: {
+      findUnique: async () => ({
+        id: "guide-1",
+        creatorId: "creator-1",
+        tripId: "trip-1",
+        price: 99000,
+        currency: "VND",
+        published: true,
+        trip: { id: "trip-1", visibility: "PRIVATE", distributionMode: "SHOP_PAID" },
+      }),
+    },
+  };
+  const service = new ShopService(prisma as never, trips as never);
+
+  await assert.rejects(
+    () => service.purchase("buyer-1", "guide-1"),
+    (err) => err instanceof NotFoundException && err.message === "Không tìm thấy guide",
+  );
 });
 
 test("unpublishing a guide returns the source trip to free explore cloning", async () => {
