@@ -11,4 +11,3 @@ export * from "./ai";
 export * from "./affiliate";
 export * from "./shop";
 export * from "./import";
-export * from "./admin";

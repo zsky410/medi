@@ -15,7 +15,6 @@ Web app lập kế hoạch du lịch theo nhóm: lịch trình kéo-thả gắn 
 
 ```
 apps/web        # Next.js frontend (PWA)
-apps/admin      # Next.js admin console (ops riêng, port 3003)
 apps/api        # NestJS backend (REST + WebSocket)
 apps/mobile     # Expo React Native (MVP scaffold)
 packages/types  # Zod schemas + DTO dùng chung FE/BE
@@ -48,7 +47,6 @@ pnpm dev
 ```
 
 - Web: http://localhost:3002
-- Admin: http://localhost:3003 (`admin@medi.app` / `medi1234` sau khi seed)
 - API: http://localhost:4000
 
 (Postgres chạy ở cổng 5433, Redis ở 6380 để tránh đụng dịch vụ có sẵn trên máy.)

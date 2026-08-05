@@ -15,7 +15,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export type Plan = "FREE" | "PRO";
 export type AuthProvider = "LOCAL" | "GOOGLE";
-export type SystemRole = "USER" | "ADMIN";
+export type SystemRole = "USER";
 
 export interface UserDto {
   id: string;
