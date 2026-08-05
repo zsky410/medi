@@ -24,6 +24,17 @@ function createGeoStub() {
       },
     ],
     [
+      "goong:start",
+      {
+        providerId: "goong:start",
+        name: "Khách sạn trung tâm",
+        address: "Phường 1, Đà Lạt",
+        lat: 11.941,
+        lng: 108.437,
+        category: "lodging",
+      },
+    ],
+    [
       "goong:coffee",
       {
         providerId: "goong:coffee",
@@ -93,11 +104,18 @@ function createGeoStub() {
 function createPrismaStub() {
   const state: {
     transactionUsed: boolean;
+    jobCreateData?: Record<string, unknown>;
+    jobUpdates: Array<{ data: Record<string, unknown>; inTransaction: boolean }>;
+    jobs: Map<string, Record<string, unknown>>;
+    inTransaction: boolean;
     tripCreateData?: Record<string, unknown>;
     placeCreateManyData?: Record<string, unknown>[];
     checklistCreateManyData?: Record<string, unknown>[];
   } = {
     transactionUsed: false,
+    jobUpdates: [],
+    jobs: new Map(),
+    inTransaction: false,
   };
   const days = [
     { id: "day-1", order: 0 },
@@ -114,6 +132,45 @@ function createPrismaStub() {
         aiGenerationsCount: 0,
       }),
       update: async () => ({}),
+    },
+    aiTripGenerationJob: {
+      create: async (args: { data: Record<string, unknown> }) => {
+        state.jobCreateData = args.data;
+        const job = {
+          id: "generation-1",
+          userId: args.data.userId,
+          input: args.data.input,
+          status: args.data.status ?? "QUEUED",
+          stage: args.data.stage ?? "QUEUED",
+          progress: args.data.progress ?? 0,
+          resultTripId: null,
+          errorMessage: null,
+          metadata: args.data.metadata ?? {},
+          startedAt: null,
+          completedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        state.jobs.set(String(job.id), job);
+        return job;
+      },
+      findUnique: async (args: { where: { id: string } }) => state.jobs.get(args.where.id) ?? null,
+      findFirst: async (args: { where?: { id?: string; userId?: string } }) => {
+        const rows = [...state.jobs.values()];
+        return rows.find((job) => {
+          if (args.where?.id && job.id !== args.where.id) return false;
+          if (args.where?.userId && job.userId !== args.where.userId) return false;
+          return true;
+        }) ?? null;
+      },
+      update: async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+        const existing = state.jobs.get(args.where.id);
+        if (!existing) throw new Error("job not found");
+        const next = { ...existing, ...args.data, updatedAt: new Date() };
+        state.jobs.set(args.where.id, next);
+        state.jobUpdates.push({ data: args.data, inTransaction: state.inTransaction });
+        return next;
+      },
     },
     trip: {
       create: async (args: { data: Record<string, unknown> }) => {
@@ -161,7 +218,14 @@ function createPrismaStub() {
     },
     $transaction: async (arg: ((tx: typeof prisma) => Promise<unknown>) | Promise<unknown>[]) => {
       state.transactionUsed = true;
-      if (typeof arg === "function") return arg(prisma);
+      if (typeof arg === "function") {
+        state.inTransaction = true;
+        try {
+          return await arg(prisma);
+        } finally {
+          state.inTransaction = false;
+        }
+      }
       return Promise.all(arg);
     },
   };
@@ -169,7 +233,7 @@ function createPrismaStub() {
   return { prisma, state };
 }
 
-test("generateTrip resolves provider-backed places and persists the plan transactionally", async () => {
+test("generateTrip enqueues a job and the worker persists the plan transactionally", async () => {
   const { prisma, state } = createPrismaStub();
   const geo = createGeoStub();
   let legacyGenerateTripCalls = 0;
@@ -186,6 +250,8 @@ test("generateTrip resolves provider-backed places and persists the plan transac
     prisma as never,
     config({
       AI_WEB_RESEARCH_ENABLED: "false",
+      AI_ALLOW_GOONG_ONLY_FALLBACK: "true",
+      AI_TRIP_WORKER_AUTOSTART: "false",
       PLACE_SEARCH_MAX_CANDIDATES: "12",
       TRIP_DEFAULT_PACE: "balanced",
     }) as never,
@@ -193,11 +259,16 @@ test("generateTrip resolves provider-backed places and persists the plan transac
   );
   (service as unknown as { provider: AiProvider }).provider = throwingProvider;
 
-  const result = await service.generateTrip("user-1", {
+  const queued = await service.generateTrip("user-1", {
     destination: {
       placeId: "goong:dest",
       name: "Đà Lạt",
       address: "Lâm Đồng",
+    },
+    startingPoint: {
+      placeId: "goong:start",
+      name: "Khách sạn trung tâm",
+      address: "Phường 1, Đà Lạt",
     },
     startDate: "2026-08-10",
     endDate: "2026-08-11",
@@ -208,8 +279,17 @@ test("generateTrip resolves provider-backed places and persists the plan transac
     pace: "balanced",
   } as GenerateTripInput);
 
+  assert.equal(queued.generationId, "generation-1");
+  assert.equal(queued.status, "QUEUED");
+  assert.equal(state.tripCreateData, undefined);
+
+  await service.processGenerationJobForTest(queued.generationId);
+  const result = await service.getGeneration("user-1", queued.generationId);
+
   assert.equal(legacyGenerateTripCalls, 0);
-  assert.equal(result.tripId, "trip-1");
+  assert.equal(result.status, "SUCCEEDED");
+  assert.equal(result.resultTripId, "trip-1");
+  assert.equal(result.result?.tripId, "trip-1");
   assert.equal(state.transactionUsed, true);
   assert.equal(((state.tripCreateData?.days as { create: unknown[] }).create).length, 2);
   assert.equal((state.tripCreateData?.startDate as Date).toISOString(), "2026-08-10T00:00:00.000Z");
@@ -224,7 +304,12 @@ test("generateTrip resolves provider-backed places and persists the plan transac
   assert.equal(metadata.usedDistanceMatrix, false);
   assert.equal(metadata.candidateCounts.goong > 0, true);
   assert.equal(metadata.candidateCounts.aiWeb, 0);
+  assert.equal(metadata.startingPoint.name, "Khách sạn trung tâm");
   assert.equal(metadata.fallbacks.includes("ai_web_research_disabled"), true);
+
+  const statuses = state.jobUpdates.map((update) => update.data.status);
+  assert.deepEqual(statuses, ["RESEARCHING", "VERIFYING", "PLANNING", "ROUTING", "NARRATING", "SUCCEEDED"]);
+  assert.equal(state.jobUpdates.some((update) => update.data.status === "SUCCEEDED" && update.inTransaction), true);
 
   const places = state.placeCreateManyData ?? [];
   assert.equal(places.length > 0, true);
@@ -233,4 +318,126 @@ test("generateTrip resolves provider-backed places and persists the plan transac
   assert.equal(places.every((place) => typeof place.generationScore === "number"), true);
   assert.equal(places.some((place) => place.name === "La Viet Coffee"), true);
   assert.equal((state.checklistCreateManyData ?? []).length > 0, true);
+});
+
+test("generateTrip worker fails deep mode before persisting when trusted web research is missing", async () => {
+  const { prisma, state } = createPrismaStub();
+  const service = new AiService(
+    prisma as never,
+    config({
+      AI_WEB_RESEARCH_ENABLED: "true",
+      AI_TRIP_WORKER_AUTOSTART: "false",
+      PLACE_SEARCH_MAX_CANDIDATES: "12",
+    }) as never,
+    createGeoStub() as never,
+  );
+
+  const queued = await service.generateTrip("user-1", {
+    destination: {
+      placeId: "goong:dest",
+      name: "Đà Lạt",
+      address: "Lâm Đồng",
+    },
+    startingPoint: {
+      placeId: "goong:start",
+      name: "Khách sạn trung tâm",
+      address: "Phường 1, Đà Lạt",
+    },
+    startDate: "2026-08-10",
+    endDate: "2026-08-11",
+    totalBudget: 5000000,
+    people: 2,
+    interests: ["coffee", "photo", "local-food"],
+    description: "Muốn lịch chill và có cà phê",
+    pace: "balanced",
+  } as GenerateTripInput);
+
+  await service.processGenerationJobForTest(queued.generationId);
+  const result = await service.getGeneration("user-1", queued.generationId);
+
+  assert.equal(result.status, "FAILED");
+  assert.equal(result.progress < 100, true);
+  assert.match(result.errorMessage ?? "", /web research/i);
+  assert.equal(state.tripCreateData, undefined);
+});
+
+test("generateTrip worker fails strict mode when final verified cited pool is insufficient", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        output: [
+          { type: "web_search_call", status: "completed" },
+          {
+            content: [
+              {
+                text: JSON.stringify({
+                  places: [
+                    {
+                      name: "Hồ Xuân Hương",
+                      placeType: "SCENIC",
+                      reason: "Official destination candidate",
+                      citations: [
+                        {
+                          title: "Da Lat tourism",
+                          url: "https://dalat.vn/ho-xuan-huong",
+                          snippet: "Official page",
+                        },
+                      ],
+                      sourceConfidence: 0.9,
+                      suggestedTimeOfDay: "morning",
+                    },
+                  ],
+                }),
+              },
+            ],
+          },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  try {
+    const { prisma, state } = createPrismaStub();
+    const service = new AiService(
+      prisma as never,
+      config({
+        OPENAI_API_KEY: "test-key",
+        OPENAI_MODEL: "gpt-5.5",
+        AI_WEB_RESEARCH_ENABLED: "true",
+        AI_TRIP_WORKER_AUTOSTART: "false",
+        PLACE_SEARCH_MAX_CANDIDATES: "12",
+      }) as never,
+      createGeoStub() as never,
+    );
+
+    const queued = await service.generateTrip("user-1", {
+      destination: {
+        placeId: "goong:dest",
+        name: "Đà Lạt",
+        address: "Lâm Đồng",
+      },
+      startingPoint: {
+        placeId: "goong:start",
+        name: "Khách sạn trung tâm",
+        address: "Phường 1, Đà Lạt",
+      },
+      startDate: "2026-08-10",
+      endDate: "2026-08-11",
+      totalBudget: 5000000,
+      people: 2,
+      interests: ["coffee", "photo", "local-food"],
+      description: "Muốn lịch chill và có cà phê",
+      pace: "balanced",
+    } as GenerateTripInput);
+
+    await service.processGenerationJobForTest(queued.generationId);
+    const result = await service.getGeneration("user-1", queued.generationId);
+
+    assert.equal(result.status, "FAILED");
+    assert.match(result.errorMessage ?? "", /citation|nguồn|địa điểm/i);
+    assert.equal(state.tripCreateData, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

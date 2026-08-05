@@ -105,6 +105,7 @@ model User {
   guidePurchases   GuidePurchase[] @relation("GuideBuyer")
   proPaymentIntents ProPaymentIntent[]
   adminAuditLogs    AdminAuditLog[] @relation("AdminAuditActor")
+  aiTripGenerationJobs AiTripGenerationJob[]
 }
 
 model ProPaymentIntent {
@@ -189,7 +190,9 @@ model PlaceCatalog {
   lat            Float
   lng            Float
   category       PlaceCategory @default(OTHER)
+  placeType      String?
   sourceMetadata Json?
+  sourceTrustScore Float       @default(0.5)
   qualityScore   Float         @default(0.6)
   lastResolvedAt DateTime      @default(now())
   expiresAt      DateTime?
@@ -201,6 +204,27 @@ model PlaceCatalog {
   @@index([normalizedName])
   @@index([category])
   @@index([lat, lng])
+}
+
+model AiTripGenerationJob {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  input       Json
+  status      String   @default("QUEUED")
+  stage       String   @default("QUEUED")
+  progress    Int      @default(0)
+  resultTripId String?
+  errorMessage String?
+  metadata    Json?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([updatedAt])
 }
 
 model Place {

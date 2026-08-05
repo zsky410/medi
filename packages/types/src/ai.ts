@@ -42,9 +42,43 @@ export const tripDestinationInputSchema = z.object({
   }
 });
 export type TripDestinationInput = z.infer<typeof tripDestinationInputSchema>;
+export type TripPointInput = TripDestinationInput;
+
+export const PLANNING_PLACE_TYPES = [
+  "SCENIC",
+  "CULTURE",
+  "NATURE",
+  "ACTIVITY",
+  "CAFE",
+  "LOCAL_FOOD",
+  "NIGHTLIFE",
+  "MARKET",
+  "SHOPPING",
+  "WELLNESS",
+] as const;
+export const planningPlaceTypeSchema = z.enum(PLANNING_PLACE_TYPES);
+export type PlanningPlaceType = z.infer<typeof planningPlaceTypeSchema>;
+
+export const suggestedTimeOfDaySchema = z.enum([
+  "morning",
+  "late_morning",
+  "lunch",
+  "afternoon",
+  "sunset",
+  "evening",
+]);
+export type SuggestedTimeOfDay = z.infer<typeof suggestedTimeOfDaySchema>;
+
+export const placeCitationSchema = z.object({
+  title: z.string().trim().min(1).max(300),
+  url: z.string().trim().url(),
+  snippet: z.string().trim().max(1000).optional(),
+});
+export type PlaceCitation = z.infer<typeof placeCitationSchema>;
 
 const generateTripInputCoreSchema = z.object({
   destination: tripDestinationInputSchema,
+  startingPoint: tripDestinationInputSchema,
   startDate: tripDateSchema,
   endDate: tripDateSchema,
   totalBudget: z.coerce.number().int().positive("Budget phải lớn hơn 0").max(1_000_000_000),
@@ -96,6 +130,7 @@ export type NormalizedDestination = z.infer<typeof normalizedDestinationSchema>;
 
 export const normalizedTripIntentSchema = z.object({
   destination: normalizedDestinationSchema,
+  startingPoint: normalizedDestinationSchema,
   startDate: tripDateSchema,
   endDate: tripDateSchema,
   dayCount: z.number().int().min(1).max(14),
@@ -124,9 +159,11 @@ export const placeCandidateSchema = z.object({
   lat: z.number().min(-90).max(90).nullable().optional(),
   lng: z.number().min(-180).max(180).nullable().optional(),
   category: z.enum(PLACE_CATEGORIES).default("OTHER"),
+  placeType: planningPlaceTypeSchema.default("SCENIC"),
   cost: z.number().nonnegative().nullable().optional(),
   qualityScore: z.number().min(0).max(1).default(0.5),
   confidence: z.number().min(0).max(1).default(0.5),
+  sourceTrustScore: z.number().min(0).max(1).default(0.5),
   matchedInterests: z.array(z.string()).default([]),
   sourceMetadata: sourceMetadataSchema,
   estimatedDurationMinutes: z.number().int().positive().nullable().optional(),
@@ -202,6 +239,7 @@ export type FinalTripPlan = z.infer<typeof finalTripPlanSchema>;
 
 export const generationMetadataSchema = z.object({
   requestId: z.string(),
+  startingPoint: normalizedDestinationSchema,
   candidateCounts: z.object({
     goong: z.number().int().nonnegative(),
     catalog: z.number().int().nonnegative(),
@@ -219,12 +257,42 @@ export const generationMetadataSchema = z.object({
 });
 export type GenerationMetadata = z.infer<typeof generationMetadataSchema>;
 
+export const aiTripGenerationStatusSchema = z.enum([
+  "QUEUED",
+  "RESEARCHING",
+  "VERIFYING",
+  "PLANNING",
+  "ROUTING",
+  "NARRATING",
+  "SUCCEEDED",
+  "FAILED",
+]);
+export type AiTripGenerationStatus = z.infer<typeof aiTripGenerationStatusSchema>;
+
+export const generateTripJobSchema = z.object({
+  generationId: z.string(),
+  status: aiTripGenerationStatusSchema,
+  estimatedWaitSeconds: z.number().int().positive(),
+});
+export type GenerateTripJobDto = z.infer<typeof generateTripJobSchema>;
+
 export interface GenerateTripResultDto {
   tripId: string;
   title: string;
   destination: string;
   remainingGenerations: number | null;
   generationMetadata?: Pick<GenerationMetadata, "warnings" | "fallbacks" | "usedWebResearch" | "usedDistanceMatrix">;
+}
+
+export interface AiTripGenerationDto {
+  generationId: string;
+  status: AiTripGenerationStatus;
+  stage: AiTripGenerationStatus;
+  progress: number;
+  estimatedWaitSeconds: number;
+  resultTripId: string | null;
+  errorMessage: string | null;
+  result?: GenerateTripResultDto;
 }
 
 export interface AiUsageDto {

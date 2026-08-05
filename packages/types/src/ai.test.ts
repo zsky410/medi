@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateTripInputSchema, generateTripSchema, finalTripPlanSchema } from "./index";
+import {
+  aiTripGenerationStatusSchema,
+  generateTripInputSchema,
+  generateTripJobSchema,
+  generateTripSchema,
+  finalTripPlanSchema,
+} from "./index";
 
 test("generateTripInputSchema accepts destination-based trip constraints", () => {
   const result = generateTripInputSchema.safeParse({
@@ -8,6 +14,13 @@ test("generateTripInputSchema accepts destination-based trip constraints", () =>
       placeId: "goong:dalat",
       name: "Đà Lạt",
       address: "Lâm Đồng",
+    },
+    startingPoint: {
+      placeId: "goong:hotel",
+      name: "Khách sạn trung tâm",
+      address: "Phường 1, Đà Lạt",
+      lat: 11.941,
+      lng: 108.437,
     },
     startDate: "2026-08-10",
     endDate: "2026-08-13",
@@ -22,6 +35,7 @@ test("generateTripInputSchema accepts destination-based trip constraints", () =>
   assert.equal(result.success, true);
   if (!result.success) return;
   assert.equal(result.data.destination.name, "Đà Lạt");
+  assert.equal(result.data.startingPoint.name, "Khách sạn trung tâm");
   assert.equal(result.data.totalBudget, 5000000);
   assert.equal(result.data.people, 2);
   assert.equal(result.data.pace, "relaxed");
@@ -32,6 +46,7 @@ test("generateTripSchema remains an alias and maps legacy field names", () => {
 
   const result = generateTripSchema.parse({
     destination: { name: "Hội An", lat: 15.877, lng: 108.326 },
+    startingPoint: { name: "Homestay Hội An", lat: 15.878, lng: 108.327 },
     startDate: "2026-08-10",
     endDate: "2026-08-12",
     budget: "4000000",
@@ -59,7 +74,20 @@ test("generateTripInputSchema rejects missing destination and invalid constraint
 
   assert.equal(
     generateTripInputSchema.safeParse({
+      destination: { name: "Đà Lạt", lat: 11.94, lng: 108.44 },
+      startDate: "2026-08-10",
+      endDate: "2026-08-12",
+      totalBudget: 4000000,
+      people: 2,
+      interests: ["culture"],
+    }).success,
+    false,
+  );
+
+  assert.equal(
+    generateTripInputSchema.safeParse({
       destination: { name: "Đà Lạt" },
+      startingPoint: { name: "Khách sạn", lat: 11.94, lng: 108.44 },
       startDate: "2026-08-13",
       endDate: "2026-08-12",
       totalBudget: 0,
@@ -112,4 +140,16 @@ test("finalTripPlanSchema rejects narrator output containing unknown place ids",
   });
 
   assert.equal(invalid.success, false);
+});
+
+test("AI generation job DTOs validate async statuses", () => {
+  const queued = generateTripJobSchema.parse({
+    generationId: "job-1",
+    status: "QUEUED",
+    estimatedWaitSeconds: 180,
+  });
+
+  assert.equal(queued.status, "QUEUED");
+  assert.equal(aiTripGenerationStatusSchema.parse("RESEARCHING"), "RESEARCHING");
+  assert.equal(aiTripGenerationStatusSchema.safeParse("RUNNING").success, false);
 });

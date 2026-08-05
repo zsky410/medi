@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UseGuards } from "@nestjs/common";
 import {
   generateTripSchema,
   optimizeRouteSchema,
@@ -27,11 +27,20 @@ export class AiController {
   }
 
   @Post("generate-trip")
+  @HttpCode(HttpStatus.ACCEPTED)
   generateTrip(
     @CurrentUser() user: JwtUser,
     @Body(new ZodPipe(generateTripSchema)) input: GenerateTripInput,
   ) {
     return this.ai.generateTrip(user.id, input);
+  }
+
+  @Get("generations/:id")
+  getGeneration(
+    @CurrentUser() user: JwtUser,
+    @Param("id") generationId: string,
+  ) {
+    return this.ai.getGeneration(user.id, generationId);
   }
 
   @Post("trips/:tripId/suggest-places")
