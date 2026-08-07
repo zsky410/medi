@@ -3,6 +3,7 @@ export * from "./trip";
 export * from "./place";
 export * from "./expense";
 export * from "./checklist";
+export * from "./chat";
 export * from "./geo";
 export * from "./billing";
 export * from "./realtime";

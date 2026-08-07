@@ -3,10 +3,11 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TripDetailDto, TripRealtimeEvent } from "@medi/types";
+import type { TripDetailDto, TripMessageDto, TripRealtimeEvent } from "@medi/types";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTripRealtime } from "@/lib/socket";
+import { appendTripMessage, shouldShowTripChat, tripMessagesQueryKey } from "@/lib/trip-chat";
 import { dayColor, formatDateRange } from "@/lib/format";
 import { AppHeader } from "@/components/app-header";
 import { RequireAuth } from "@/components/require-auth";
@@ -18,6 +19,7 @@ import { BookingsTab } from "@/components/trip/bookings-tab";
 import { TripSetupPanel } from "@/components/trip/trip-setup-panel";
 import { MembersModal } from "@/components/trip/members-modal";
 import { ShareModal } from "@/components/trip/share-modal";
+import { TripChatPanel } from "@/components/trip/trip-chat-panel";
 import { loadOfflineSnapshot, saveOfflineSnapshot } from "@/components/trip/pro-tools";
 import { TripTabSidebar, type TripTab } from "@/components/trip/trip-tab-sidebar";
 import { tripPlacesToMapItems, type MapPreviewPin } from "@/components/trip/trip-map";
@@ -47,6 +49,7 @@ function TripDetailContent({ tripId }: { tripId: string }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [itineraryWidth, setItineraryWidth] = useState(60);
   const [isResizingMap, setIsResizingMap] = useState(false);
+  const [hasNewChatMessage, setHasNewChatMessage] = useState(false);
 
   const setSplitWidth = useCallback((nextWidth: number) => {
     const clampedWidth = Math.min(72, Math.max(35, nextWidth));
@@ -122,9 +125,16 @@ function TripDetailContent({ tripId }: { tripId: string }) {
         case "checklist:changed":
           queryClient.invalidateQueries({ queryKey: ["checklist", tripId] });
           break;
+        case "chat:message":
+          queryClient.setQueryData<TripMessageDto[]>(tripMessagesQueryKey(tripId), (current) =>
+            current ? appendTripMessage(current, event.message) : current,
+          );
+          if (event.message.senderId !== user?.id) setHasNewChatMessage(true);
+          queryClient.invalidateQueries({ queryKey: tripMessagesQueryKey(tripId), refetchType: "none" });
+          break;
       }
     },
-    [queryClient, tripId],
+    [queryClient, tripId, user?.id],
   );
   useTripRealtime(tripId, onRealtimeEvent);
 
@@ -276,7 +286,7 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                 <span className="h-10 w-1 rounded-full bg-[#D7BFA9]" aria-hidden="true" />
               </div>
               <div
-                className="order-1 h-52 w-full shrink-0 border-b border-[#F3E3D3] bg-white sm:h-64 lg:order-3 lg:h-auto lg:min-h-0 lg:w-[calc(100%-var(--itinerary-width)-6px)] lg:flex-none lg:border-b-0"
+                className="relative order-1 h-52 w-full shrink-0 border-b border-[#F3E3D3] bg-white sm:h-64 lg:order-3 lg:h-auto lg:min-h-0 lg:w-[calc(100%-var(--itinerary-width)-6px)] lg:flex-none lg:border-b-0"
               >
                 <TripMap
                   itineraryItems={itineraryItems}
@@ -287,6 +297,14 @@ function TripDetailContent({ tripId }: { tripId: string }) {
                   routePath={routePath}
                   onMarkerClick={setSelectedPlaceId}
                 />
+                {shouldShowTripChat(trip.members.length) && (
+                  <TripChatPanel
+                    tripId={trip.id}
+                    currentUserId={user?.id}
+                    hasNewMessage={hasNewChatMessage}
+                    onSeen={() => setHasNewChatMessage(false)}
+                  />
+                )}
               </div>
             </div>
           ) : (
