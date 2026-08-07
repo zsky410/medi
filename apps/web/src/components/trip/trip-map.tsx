@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import maplibregl, { Map as MLMap, Marker } from "maplibre-gl";
 import type { PlaceDto } from "@medi/types";
 import { dayColor } from "@/lib/format";
+import { shouldFallbackToOsmMapStyle } from "@/lib/map-style-fallback";
 
 const GOONG_STYLE = (mapKey?: string) =>
   mapKey ? `https://tiles.goong.io/assets/goong_map_web.json?api_key=${encodeURIComponent(mapKey)}` : null;
@@ -270,13 +271,26 @@ export function TripMap({
 
     // Re-add the route source/layers after each style load (initial load and
     // after the Goong -> fallback swap, which drops all custom layers).
-    map.on("style.load", () => ensureRouteLayers(map, routePathRef.current));
+    let hasLoadedGoongStyle = false;
+    map.on("style.load", () => {
+      if (map.getStyle()?.name?.toLowerCase().includes("goong")) {
+        hasLoadedGoongStyle = true;
+      }
+      ensureRouteLayers(map, routePathRef.current);
+    });
 
     let switchedToFallbackStyle = false;
     map.on("error", (event) => {
-      if (switchedToFallbackStyle || style === FALLBACK_STYLE) return;
       const errorText = getMapErrorText(event);
-      if (!errorText.includes("tiles.goong.io")) return;
+      if (
+        !shouldFallbackToOsmMapStyle({
+          isFallbackStyle: switchedToFallbackStyle || style === FALLBACK_STYLE,
+          hasLoadedGoongStyle,
+          errorText,
+        })
+      ) {
+        return;
+      }
 
       switchedToFallbackStyle = true;
       map.setStyle(FALLBACK_STYLE);

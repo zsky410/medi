@@ -147,7 +147,6 @@ function AddBookingModal({
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder={isLodging ? "OHAYOU DALAT HOMESTAY" : "VD: Vietnam Airlines HAN → DAD"}
           />
         </div>
 
@@ -158,7 +157,6 @@ function AddBookingModal({
               id="booking-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Số nhà, phường, thành phố..."
             />
           </div>
         )}
@@ -167,11 +165,11 @@ function AddBookingModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="booking-from">Điểm đi</Label>
-              <Input id="booking-from" value={fromPlace} onChange={(e) => setFromPlace(e.target.value)} placeholder="Đà Nẵng" />
+              <Input id="booking-from" value={fromPlace} onChange={(e) => setFromPlace(e.target.value)} />
             </div>
             <div>
               <Label htmlFor="booking-to">Điểm đến</Label>
-              <Input id="booking-to" value={toPlace} onChange={(e) => setToPlace(e.target.value)} placeholder="Đà Lạt" />
+              <Input id="booking-to" value={toPlace} onChange={(e) => setToPlace(e.target.value)} />
             </div>
           </div>
         )}
@@ -179,18 +177,18 @@ function AddBookingModal({
         {isTransport && (
           <div>
             <Label htmlFor="booking-provider">Nhà xe / hãng</Label>
-            <Input id="booking-provider" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder="Phương Trang, Vietnam Airlines..." />
+            <Input id="booking-provider" value={provider} onChange={(e) => setProvider(e.target.value)} />
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>{isLodging ? "Nhận phòng" : "Ngày đi"}</Label>
-            <DateInput value={startDate} onChange={setStartDate} />
+            <DateInput value={startDate} onChange={setStartDate} emptyText="" />
           </div>
           <div>
             <Label>{isLodging ? "Trả phòng" : "Ngày về"}</Label>
-            <DateInput value={endDate} onChange={setEndDate} min={startDate || undefined} />
+            <DateInput value={endDate} onChange={setEndDate} min={startDate || undefined} emptyText="" />
           </div>
         </div>
 
@@ -198,11 +196,11 @@ function AddBookingModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="booking-start-time">Giờ đi</Label>
-              <Input id="booking-start-time" value={startTime} onChange={(e) => setStartTime(e.target.value)} placeholder="17:30" />
+              <Input id="booking-start-time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
             <div>
               <Label htmlFor="booking-end-time">Giờ đến</Label>
-              <Input id="booking-end-time" value={endTime} onChange={(e) => setEndTime(e.target.value)} placeholder="08:00" />
+              <Input id="booking-end-time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
         )}
@@ -210,7 +208,7 @@ function AddBookingModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="booking-code">Mã đặt chỗ</Label>
-            <Input id="booking-code" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="ABC123" />
+            <Input id="booking-code" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
           </div>
           <div>
             <Label htmlFor="booking-amount">Chi phí (VND)</Label>
@@ -219,19 +217,18 @@ function AddBookingModal({
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="870000"
             />
           </div>
         </div>
 
         <div>
           <Label htmlFor="booking-link">Link đặt chỗ (tuỳ chọn)</Label>
-          <Input id="booking-link" value={link} onChange={(e) => setLink(e.target.value)} placeholder="booking.com, email xác nhận..." />
+          <Input id="booking-link" value={link} onChange={(e) => setLink(e.target.value)} />
         </div>
 
         <div>
           <Label htmlFor="booking-note">Ghi chú thêm (tuỳ chọn)</Label>
-          <Input id="booking-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Phòng 302, liên hệ..." />
+          <Input id="booking-note" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
 
         {amount.replace(/\D/g, "") && (
