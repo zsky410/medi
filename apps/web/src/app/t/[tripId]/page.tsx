@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { PublicTripDto } from "@medi/types";
 import { PublicTripView } from "./public-trip-view";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_DIRECT_API_URL ?? "http://localhost:4000";
 
 async function fetchPublicTrip(tripId: string): Promise<PublicTripDto | null> {
   try {

@@ -8,8 +8,7 @@ import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
 import { Spinner } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
-
-const FALLBACK_COVER = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&h=300&fit=crop&auto=format";
+import { publicTripDestinationCover } from "@/lib/public-trips";
 
 async function fetchGuides(): Promise<GuidesListDto> {
   const res = await fetch(`${API_URL}/shop/guides`);
@@ -49,7 +48,7 @@ export default function ShopPage() {
                 className="boarding-card group overflow-hidden hover:shadow-xl transition-all"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={g.coverImage ?? FALLBACK_COVER} alt="" className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={g.coverImage ?? publicTripDestinationCover(g.destination)} alt="" className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500" />
                 <div className="p-4 bg-white space-y-2">
                   <p className="text-xs font-bold text-brand-500">{g.destination}</p>
                   <h2 className="font-display font-extrabold text-lg text-[#2B2118] line-clamp-2">{g.title}</h2>

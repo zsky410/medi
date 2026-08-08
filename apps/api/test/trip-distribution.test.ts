@@ -59,7 +59,7 @@ test("publishing a paid guide moves the source trip out of the free explore pool
   ]);
 });
 
-test("Creator Shop only lists published guides whose source trip is still public", async () => {
+test("Creator Shop only lists paid published guides whose source trip is still public", async () => {
   let listWhere: unknown;
   const prisma = {
     guide: {
@@ -79,8 +79,62 @@ test("Creator Shop only lists published guides whose source trip is still public
 
   assert.deepEqual(listWhere, {
     published: true,
+    price: { gt: 0 },
     trip: { visibility: "PUBLIC" },
   });
+});
+
+test("publishing a free guide keeps the source trip in the free explore pool", async () => {
+  const tripUpdates: unknown[] = [];
+  const prisma = {
+    trip: {
+      findUnique: async () => ({
+        id: "trip-1",
+        ownerId: "creator-1",
+        visibility: "PUBLIC",
+        members: [{ userId: "creator-1", role: "OWNER" }],
+      }),
+      update: async (args: unknown) => {
+        tripUpdates.push(args);
+      },
+    },
+    guide: {
+      findFirst: async () => null,
+      create: async () => ({
+        id: "guide-1",
+        title: "Da Lat free guide",
+        description: null,
+        price: 0,
+        currency: "VND",
+        published: true,
+        purchaseCount: 0,
+        createdAt: date,
+        creator: { id: "creator-1", name: "Creator" },
+        trip: {
+          id: "trip-1",
+          destination: "Da Lat",
+          coverImage: null,
+          _count: { days: 3, places: 12 },
+        },
+        purchases: [],
+      }),
+    },
+  };
+  const service = new ShopService(prisma as never, {} as never);
+
+  await service.publish("creator-1", {
+    tripId: "trip-1",
+    title: "Da Lat free guide",
+    price: 0,
+    currency: "VND",
+  });
+
+  assert.deepEqual(tripUpdates, [
+    {
+      where: { id: "trip-1" },
+      data: { distributionMode: "EXPLORE_FREE" },
+    },
+  ]);
 });
 
 test("public guide detail is hidden when the source trip becomes private", async () => {

@@ -10,10 +10,12 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "ts-node --transpile-only prisma/seed.ts",
+    "db:seed:demo": "ts-node --transpile-only prisma/demo-seed.ts",
     "db:generate": "prisma generate"
   },
   "prisma": {
-    "seed": "ts-node --transpile-only prisma/seed.ts"
+    "seed": "ts-node --transpile-only prisma/seed.ts",
+    "seed:demo": "ts-node --transpile-only prisma/demo-seed.ts"
   },
   "dependencies": {
     "@medi/types": "workspace:*",

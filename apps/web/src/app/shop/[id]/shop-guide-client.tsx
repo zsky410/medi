@@ -11,8 +11,7 @@ import { AppHeader } from "@/components/app-header";
 import { Footer } from "@/components/footer";
 import { Button, Spinner } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
-
-const FALLBACK_COVER = "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=400&h=300&fit=crop&auto=format";
+import { publicTripDestinationCover } from "@/lib/public-trips";
 
 function PurchaseButton({ guideId }: { guideId: string }) {
   const { user } = useAuth();
@@ -72,7 +71,7 @@ export default function ShopGuidePage({ id }: { id: string }) {
         <Link href="/shop" className="text-sm font-bold text-brand-500 hover:underline">← Creator Shop</Link>
         <div className="mt-6 rounded-3xl overflow-hidden border-2 border-[#F3E3D3] bg-white shadow-lg">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={guide.coverImage ?? FALLBACK_COVER} alt="" className="w-full h-56 object-cover" />
+          <img src={guide.coverImage ?? publicTripDestinationCover(guide.destination)} alt="" className="w-full h-56 object-cover" />
           <div className="p-6 space-y-4">
             <div>
               <p className="text-xs font-bold text-brand-500">{guide.destination}</p>
