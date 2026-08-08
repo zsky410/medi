@@ -9,7 +9,7 @@ export default function Index() {
 
   useEffect(() => {
     if (loading) return;
-    router.replace(user ? "/trips" : "/login");
+    router.replace(user ? "/explore" : "/login");
   }, [user, loading, router]);
 
   return (

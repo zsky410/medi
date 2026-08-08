@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { UserDto } from "@medi/types";
-import { api, clearTokens, getAccessToken } from "./api";
+import { api, clearTokens, getAccessToken, logoutRequest } from "./api";
 
 interface AuthState {
   user: UserDto | null;
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   async function logout() {
-    await clearTokens();
+    await logoutRequest().catch(() => clearTokens());
     setUser(null);
   }
 
