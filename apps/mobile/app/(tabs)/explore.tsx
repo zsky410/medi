@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from "expo-router";
 import type { PublicTripListItemDto } from "@medi/types";
 import { fetchPublicTrips } from "../../lib/api";
 import { colors } from "../../lib/theme";
@@ -12,17 +13,17 @@ import {
 
 const POPULAR_DESTINATIONS = ["Đà Lạt", "Đà Nẵng", "Nha Trang", "Ninh Bình", "Hà Nội", "TP.HCM", "Huế", "Phú Quốc"];
 
-function TripCard({ trip, color }: { trip: PublicTripListItemDto; color: string }) {
+function TripCard({ trip, color, onPress }: { trip: PublicTripListItemDto; color: string; onPress: () => void }) {
   const duration = publicTripDurationLabel(trip.startDate, trip.endDate);
 
   return (
-    <Pressable style={({ pressed }) => [styles.tripCard, pressed && styles.pressed]}>
-      <Image source={{ uri: publicTripPreviewCover(trip) }} style={styles.cover} />
-      <View style={styles.coverScrim} />
-      <View style={styles.coverContent}>
-        <View style={{ flex: 1 }}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.tripCard, pressed && styles.pressed]}>
+      <View style={styles.coverWrap}>
+        <Image source={{ uri: publicTripPreviewCover(trip) }} style={styles.cover} />
+        <View style={styles.coverScrim} />
+        <View style={styles.coverContent}>
           <Text style={styles.destination} numberOfLines={1}>{trip.destination.split(",")[0]}</Text>
-          <Text style={styles.tripTitle} numberOfLines={1}>{trip.title} · {duration}</Text>
+          <Text style={styles.tripTitle} numberOfLines={2}>{trip.title}</Text>
         </View>
         <View style={styles.durationBadge}>
           <Text style={styles.durationText}>{duration}</Text>
@@ -45,6 +46,7 @@ function TripCard({ trip, color }: { trip: PublicTripListItemDto; color: string 
 }
 
 export default function ExploreScreen() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [destination, setDestination] = useState<string | undefined>();
   const [trips, setTrips] = useState<PublicTripListItemDto[]>([]);
@@ -119,9 +121,16 @@ export default function ExploreScreen() {
           <Text style={styles.emptyBody}>Thử đổi điểm đến hoặc mở web để chia sẻ chuyến đi đầu tiên.</Text>
         </View>
       ) : (
-        trips.map((trip, index) => (
-          <TripCard key={trip.id} trip={trip} color={PUBLIC_TRIP_CARD_COLORS[index % PUBLIC_TRIP_CARD_COLORS.length]} />
-        ))
+        <View style={styles.grid}>
+          {trips.map((trip, index) => (
+            <TripCard
+              key={trip.id}
+              trip={trip}
+              color={PUBLIC_TRIP_CARD_COLORS[index % PUBLIC_TRIP_CARD_COLORS.length]}
+              onPress={() => router.push({ pathname: "/public-trip/[tripId]", params: { tripId: trip.id } })}
+            />
+          ))}
+        </View>
       )}
     </ScrollView>
   );
@@ -143,44 +152,50 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   chipRail: { marginBottom: 10 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 14,
+  },
   tripCard: {
-    minHeight: 268,
-    borderRadius: 20,
+    width: "48%",
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     overflow: "hidden",
-    marginBottom: 16,
   },
   pressed: { transform: [{ scale: 0.99 }] },
-  cover: { height: 196, width: "100%", backgroundColor: colors.surfaceSoft },
-  coverScrim: { ...StyleSheet.absoluteFillObject, height: 196, backgroundColor: "rgba(43,33,24,0.28)" },
+  coverWrap: { height: 132, overflow: "hidden" },
+  cover: { height: "100%", width: "100%", backgroundColor: colors.surfaceSoft },
+  coverScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(43,33,24,0.28)" },
   coverContent: {
     position: "absolute",
-    left: 14,
-    right: 14,
-    top: 132,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 12,
+    left: 10,
+    right: 10,
+    bottom: 10,
   },
-  destination: { color: "#fff", fontSize: 26, fontWeight: "900", lineHeight: 31 },
-  tripTitle: { color: "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: "800", marginTop: 2 },
+  destination: { color: "#fff", fontSize: 19, fontWeight: "900", lineHeight: 23 },
+  tripTitle: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "800", lineHeight: 15, marginTop: 2 },
   durationBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.94)",
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
-  durationText: { color: colors.text, fontSize: 11, fontWeight: "900" },
-  tripFooter: { minHeight: 70, padding: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  ownerRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  ownerDot: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  durationText: { color: colors.text, fontSize: 10, fontWeight: "900" },
+  tripFooter: { padding: 10, gap: 9 },
+  ownerRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  ownerDot: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   ownerInitial: { color: "#fff", fontSize: 11, fontWeight: "900" },
-  ownerName: { flex: 1, color: colors.muted, fontSize: 12, fontWeight: "800" },
-  tripStats: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stat: { color: colors.muted, fontSize: 12, fontWeight: "800" },
-  cloneStat: { color: colors.brand, fontSize: 12, fontWeight: "900" },
+  ownerName: { flex: 1, color: colors.muted, fontSize: 11, fontWeight: "800" },
+  tripStats: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 6, paddingTop: 2 },
+  stat: { color: colors.muted, fontSize: 10, fontWeight: "800" },
+  cloneStat: { color: colors.brand, fontSize: 10, fontWeight: "900" },
   empty: {
     borderRadius: 20,
     borderWidth: 1.5,

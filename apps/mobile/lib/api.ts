@@ -13,13 +13,17 @@ import type {
   CreateTripInput,
   ExpenseDto,
   GuidesListDto,
+  GuideDetailDto,
   ImportBookingResultDto,
+  PublicTripDto,
   PublicTripsListDto,
   ParseBookingTextInput,
   PlaceDto,
   RegisterInput,
   SendTripMessageInput,
   SubscriptionDto,
+  PurchaseGuideResultDto,
+  DayRoutePathDto,
   TripDetailDto,
   TripDto,
   TripMessageDto,
@@ -189,10 +193,33 @@ export async function fetchPublicTrips({
   return res.json() as Promise<PublicTripsListDto>;
 }
 
+export async function fetchPublicTrip(tripId: string): Promise<PublicTripDto> {
+  const res = await fetchWithTimeout(`${API_URL}${buildApiPath("/public/trips/:tripId", { tripId })}`);
+  if (!res.ok) throw new ApiError(res.status, await parseError(res));
+  return res.json() as Promise<PublicTripDto>;
+}
+
+export async function clonePublicTrip(tripId: string): Promise<TripDto> {
+  return jsonApi<TripDto>(buildApiPath("/trips/:tripId/clone", { tripId }), { method: "POST" });
+}
+
 export async function fetchGuides(): Promise<GuidesListDto> {
   const res = await fetchWithTimeout(`${API_URL}/shop/guides`);
   if (!res.ok) throw new ApiError(res.status, await parseError(res));
   return res.json() as Promise<GuidesListDto>;
+}
+
+export async function fetchGuideDetail(guideId: string, authenticated: boolean): Promise<GuideDetailDto> {
+  if (authenticated) return api<GuideDetailDto>(buildApiPath("/shop/guides/:guideId", { guideId }));
+  const res = await fetchWithTimeout(`${API_URL}${buildApiPath("/shop/public/guides/:guideId", { guideId })}`);
+  if (!res.ok) throw new ApiError(res.status, await parseError(res));
+  return res.json() as Promise<GuideDetailDto>;
+}
+
+export async function purchaseGuide(guideId: string): Promise<PurchaseGuideResultDto> {
+  return jsonApi<PurchaseGuideResultDto>(buildApiPath("/shop/guides/:guideId/purchase", { guideId }), {
+    method: "POST",
+  });
 }
 
 export async function fetchSubscription(): Promise<SubscriptionDto> {
@@ -217,6 +244,10 @@ export async function createTrip(input: CreateTripInput): Promise<TripDto> {
 
 export async function fetchTripDetail(tripId: string): Promise<TripDetailDto> {
   return api<TripDetailDto>(tripResourcePath(tripId, "detail"));
+}
+
+export async function fetchDayRoutePath(tripId: string, dayId: string): Promise<DayRoutePathDto> {
+  return api<DayRoutePathDto>(buildApiPath("/trips/:tripId/places/days/:dayId/route-path", { tripId, dayId }));
 }
 
 export async function createPlace(tripId: string, input: CreatePlaceInput): Promise<PlaceDto> {

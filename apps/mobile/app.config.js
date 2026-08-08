@@ -25,5 +25,6 @@ module.exports = {
     ...appJson.expo.extra,
     apiUrl: apiUrl(),
     apiTimeoutMs: Number(process.env.MOBILE_API_TIMEOUT_MS ?? 15000),
+    goongMapKey: process.env.EXPO_PUBLIC_GOONG_MAP_KEY ?? process.env.NEXT_PUBLIC_GOONG_MAP_KEY ?? "",
   },
 };

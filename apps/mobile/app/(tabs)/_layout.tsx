@@ -1,18 +1,14 @@
 import { Tabs } from "expo-router";
-import type { ComponentProps } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { Avatar, BrandLogo } from "../../components/ui";
 import { useAuth } from "../../lib/auth";
 import { colors } from "../../lib/theme";
 
-type IconName = ComponentProps<typeof Ionicons>["name"];
-
-function TabIcon({ name, color, focused }: { name: IconName; color: string; focused: boolean }) {
+function TabIcon({ glyph, color, focused }: { glyph: string; color: string; focused: boolean }) {
   return (
     <View style={[styles.tabIconFrame, focused && styles.tabIconFrameActive]}>
-      <Ionicons name={name} size={20} color={focused ? "#fff" : color} />
+      <Text style={[styles.tabIconText, { color: focused ? "#fff" : color }]}>{glyph}</Text>
     </View>
   );
 }
@@ -77,35 +73,35 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: "Explore",
-          tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "compass" : "compass-outline"} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon glyph="⌖" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="shop"
         options={{
           title: "Shop",
-          tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "storefront" : "storefront-outline"} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon glyph="▣" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="trips"
         options={{
           title: "Trips",
-          tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "airplane" : "airplane-outline"} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon glyph="✈" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="pro"
         options={{
           title: "Pro",
-          tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "sparkles" : "sparkles-outline"} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon glyph="✦" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, focused }) => <TabIcon name={focused ? "person-circle" : "person-circle-outline"} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon glyph="●" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen name="today" options={{ href: null }} />
@@ -132,6 +128,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  tabIconText: { fontSize: 17, fontWeight: "900", lineHeight: 20 },
   tabIconFrameActive: {
     backgroundColor: colors.brand,
     shadowColor: colors.brand,

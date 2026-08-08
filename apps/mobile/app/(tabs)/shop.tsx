@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import type { GuideListItemDto } from "@medi/types";
 import { fetchGuides } from "../../lib/api";
 import { formatMoney } from "../../lib/format";
@@ -7,12 +8,12 @@ import { publicTripDestinationCover } from "../../lib/public-trips";
 import { colors } from "../../lib/theme";
 import { EmptyState, ErrorBanner, LoadingState, PageHeader } from "../../components/ui";
 
-function GuideCard({ guide }: { guide: GuideListItemDto }) {
+function GuideCard({ guide, onPress }: { guide: GuideListItemDto; onPress: () => void }) {
   return (
-    <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <Image source={{ uri: guide.coverImage ?? publicTripDestinationCover(guide.destination) }} style={styles.cover} />
       <View style={styles.body}>
-        <Text style={styles.destination}>{guide.destination}</Text>
+        <Text style={styles.destination} numberOfLines={1}>{guide.destination}</Text>
         <Text style={styles.title} numberOfLines={2}>{guide.title}</Text>
         {guide.description ? <Text style={styles.description} numberOfLines={2}>{guide.description}</Text> : null}
         <View style={styles.footer}>
@@ -30,6 +31,7 @@ function GuideCard({ guide }: { guide: GuideListItemDto }) {
 }
 
 export default function ShopScreen() {
+  const router = useRouter();
   const [guides, setGuides] = useState<GuideListItemDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -73,7 +75,15 @@ export default function ShopScreen() {
       {guides.length === 0 ? (
         <EmptyState title="Chưa có guide nào" body="Hãy là người đầu tiên đăng guide từ bản web." />
       ) : (
-        guides.map((guide) => <GuideCard key={guide.id} guide={guide} />)
+        <View style={styles.grid}>
+          {guides.map((guide) => (
+            <GuideCard
+              key={guide.id}
+              guide={guide}
+              onPress={() => router.push({ pathname: "/guide/[guideId]", params: { guideId: guide.id } })}
+            />
+          ))}
+        </View>
       )}
     </ScrollView>
   );
@@ -90,31 +100,37 @@ const styles = StyleSheet.create({
   },
   creatorStripTitle: { color: "#fff", fontSize: 18, fontWeight: "900" },
   creatorStripBody: { color: "rgba(255,255,255,0.72)", fontSize: 13, fontWeight: "700", lineHeight: 19, marginTop: 5 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 14,
+  },
   card: {
-    borderRadius: 20,
+    width: "48%",
+    borderRadius: 18,
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     overflow: "hidden",
-    marginBottom: 16,
   },
   pressed: { transform: [{ scale: 0.99 }] },
-  cover: { height: 172, width: "100%", backgroundColor: colors.surfaceSoft },
-  body: { padding: 16 },
-  destination: { color: colors.brand, fontSize: 12, fontWeight: "900", marginBottom: 4 },
-  title: { color: colors.text, fontSize: 19, fontWeight: "900", lineHeight: 24 },
-  description: { color: colors.secondary, fontSize: 13, fontWeight: "700", lineHeight: 19, marginTop: 8 },
-  footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 14 },
-  creator: { flex: 1, color: colors.muted, fontSize: 12, fontWeight: "800" },
-  price: { color: colors.text, fontSize: 13, fontWeight: "900" },
-  metaRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 12 },
+  cover: { height: 120, width: "100%", backgroundColor: colors.surfaceSoft },
+  body: { padding: 10 },
+  destination: { color: colors.brand, fontSize: 11, fontWeight: "900", marginBottom: 4 },
+  title: { color: colors.text, fontSize: 14, fontWeight: "900", lineHeight: 18 },
+  description: { color: colors.secondary, fontSize: 11, fontWeight: "700", lineHeight: 15, marginTop: 6 },
+  footer: { paddingTop: 9, gap: 5 },
+  creator: { color: colors.muted, fontSize: 11, fontWeight: "800" },
+  price: { color: colors.text, fontSize: 12, fontWeight: "900" },
+  metaRow: { flexDirection: "row", gap: 5, flexWrap: "wrap", marginTop: 8 },
   meta: {
     borderRadius: 999,
     backgroundColor: colors.surfaceSoft,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
   },
 });

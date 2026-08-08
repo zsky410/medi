@@ -15,12 +15,15 @@ import {
   createPlace,
   deletePlace,
   fetchAttachments,
+  fetchDayRoutePath,
   fetchTripDetail,
   importBookingText,
   updatePlace,
 } from "../../lib/api";
 import { formatDate, formatDateRange, formatMoney } from "../../lib/format";
+import { decodePolyline } from "../../lib/polyline";
 import { colors, dayColors } from "../../lib/theme";
+import { TripMapWebView, type MobileMapItem } from "../../components/trip-map-webview";
 import {
   Card,
   EmptyState,
@@ -188,6 +191,7 @@ export default function TripDetailScreen() {
   const [placeSheetOpen, setPlaceSheetOpen] = useState(false);
   const [importSheetOpen, setImportSheetOpen] = useState(false);
   const [importText, setImportText] = useState("");
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -196,6 +200,21 @@ export default function TripDetailScreen() {
   const selectedDay = useMemo(() => trip?.days.find((day) => day.id === selectedDayId) ?? null, [trip, selectedDayId]);
   const visiblePlaces = selectedDay ? selectedDay.places : trip?.unassignedPlaces ?? [];
   const selectedColor = selectedDay ? dayColors[selectedDay.order % dayColors.length] : colors.muted;
+  const routeOrderKey = selectedDay?.places.map((place) => place.id).join(",") ?? "";
+  const mapItems = useMemo<MobileMapItem[]>(
+    () =>
+      visiblePlaces
+        .filter((place) => place.lat != null && place.lng != null)
+        .map((place, index) => ({
+          id: place.id,
+          name: place.name,
+          latitude: place.lat!,
+          longitude: place.lng!,
+          visitOrder: index + 1,
+          color: selectedColor,
+        })),
+    [selectedColor, visiblePlaces],
+  );
 
   const load = useCallback(async () => {
     if (!tripId) return;
@@ -212,6 +231,29 @@ export default function TripDetailScreen() {
       .catch((err) => setError(err instanceof Error ? err.message : "Không tải được trip"))
       .finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    setRouteCoordinates(null);
+    if (!tripId || !selectedDay || selectedDay.places.filter((place) => place.lat != null && place.lng != null).length < 2) {
+      return () => {
+        active = false;
+      };
+    }
+
+    fetchDayRoutePath(tripId, selectedDay.id)
+      .then((data) => {
+        if (!active) return;
+        setRouteCoordinates(data.encodedPolyline ? decodePolyline(data.encodedPolyline) : null);
+      })
+      .catch(() => {
+        if (active) setRouteCoordinates(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [routeOrderKey, selectedDay, tripId]);
 
   async function refresh() {
     setRefreshing(true);
@@ -307,6 +349,26 @@ export default function TripDetailScreen() {
               </Pill>
             ))}
           </ScrollView>
+          <View style={styles.mapSection}>
+            <View style={styles.mapHeader}>
+              <Text style={styles.mapTitle}>Bản đồ</Text>
+              <Text style={styles.mapCount}>{mapItems.length} điểm có tọa độ</Text>
+            </View>
+            <TripMapWebView
+              items={mapItems}
+              routePath={
+                selectedDay && routeCoordinates && routeCoordinates.length >= 2
+                  ? { coordinates: routeCoordinates, color: selectedColor }
+                  : null
+              }
+              onMarkerPress={(placeId) => {
+                const place = visiblePlaces.find((item) => item.id === placeId);
+                if (!place) return;
+                setEditingPlace(place);
+                setPlaceSheetOpen(true);
+              }}
+            />
+          </View>
           <Text style={styles.sectionTitle}>{selectedDay ? `Ngày ${selectedDay.order + 1}` : "Địa điểm chưa xếp"}</Text>
           {visiblePlaces.length === 0 ? (
             <EmptyState title="Chưa có địa điểm" body="Thêm địa điểm nhanh hoặc import booking bên dưới." />
@@ -362,6 +424,17 @@ const styles = StyleSheet.create({
   backButton: { alignSelf: "flex-start", paddingVertical: 8, marginBottom: 4 },
   backText: { color: colors.muted, fontSize: 13, fontWeight: "900" },
   dayStrip: { marginBottom: 10 },
+  mapSection: {
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 10,
+    marginBottom: 16,
+  },
+  mapHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, paddingHorizontal: 4, marginBottom: 8 },
+  mapTitle: { color: colors.text, fontSize: 16, fontWeight: "900" },
+  mapCount: { color: colors.muted, fontSize: 11, fontWeight: "800" },
   sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "900", marginBottom: 12 },
   sectionLabel: { color: colors.text, fontSize: 13, fontWeight: "900", marginBottom: 8 },
   wrap: { flexDirection: "row", flexWrap: "wrap", marginBottom: 10 },
