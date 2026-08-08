@@ -7,15 +7,18 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
   createTripSchema,
   inviteMemberSchema,
+  sendTripMessageSchema,
   updateMemberRoleSchema,
   updateTripSchema,
   type CreateTripInput,
   type InviteMemberInput,
+  type SendTripMessageInput,
   type UpdateMemberRoleInput,
   type UpdateTripInput,
 } from "@medi/types";
@@ -23,6 +26,7 @@ import { JwtGuard } from "../auth/jwt.guard";
 import { CurrentUser, type JwtUser } from "../common/current-user.decorator";
 import { ZodPipe } from "../common/zod.pipe";
 import { TripsGateway } from "../realtime/trips.gateway";
+import { TripMessagesService } from "./trip-messages.service";
 import { TripsService } from "./trips.service";
 
 @UseGuards(JwtGuard)
@@ -30,6 +34,7 @@ import { TripsService } from "./trips.service";
 export class TripsController {
   constructor(
     private readonly trips: TripsService,
+    private readonly messages: TripMessagesService,
     private readonly realtime: TripsGateway,
   ) {}
 
@@ -64,6 +69,32 @@ export class TripsController {
   async remove(@CurrentUser() user: JwtUser, @Param("id") id: string) {
     await this.trips.remove(id, user.id);
     return { ok: true };
+  }
+
+  @Get(":id/messages")
+  listMessages(
+    @CurrentUser() user: JwtUser,
+    @Param("id") id: string,
+    @Query("cursor") cursor?: string,
+    @Query("limit") rawLimit?: string,
+  ) {
+    const limit = rawLimit ? Number(rawLimit) : undefined;
+    return this.messages.list(id, user.id, {
+      cursor,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+  }
+
+  @Post(":id/messages")
+  async createMessage(
+    @CurrentUser() user: JwtUser,
+    @Param("id") id: string,
+    @Body(new ZodPipe(sendTripMessageSchema)) input: SendTripMessageInput,
+    @Headers("x-socket-id") socketId?: string,
+  ) {
+    const message = await this.messages.create(id, user.id, input);
+    this.realtime.emitToTrip(id, { type: "chat:message", message }, socketId);
+    return message;
   }
 
   @Post(":id/members")

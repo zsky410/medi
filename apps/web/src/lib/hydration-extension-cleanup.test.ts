@@ -48,3 +48,61 @@ test("hydration extension cleanup is defensive when document APIs fail", () => {
     });
   });
 });
+
+test("hydration extension cleanup removes attributes injected after the initial pass", () => {
+  const removed: string[] = [];
+  let observerCallback: ((mutations: unknown[]) => void) | null = null;
+  const attr = HYDRATION_EXTENSION_ATTRIBUTES[0];
+
+  const attributeNode = {
+    nodeType: 1,
+    hasAttribute(name: string) {
+      assert.equal(name, attr);
+      return true;
+    },
+    removeAttribute(name: string) {
+      removed.push(`node:${name}`);
+    },
+  };
+  const addedNode = {
+    nodeType: 1,
+    querySelectorAll(selector: string) {
+      assert.equal(selector, `[${attr}]`);
+      return [
+        {
+          removeAttribute(name: string) {
+            removed.push(`child:${name}`);
+          },
+        },
+      ];
+    },
+  };
+
+  vm.runInNewContext(createHydrationExtensionCleanupScript(), {
+    document: {
+      documentElement: {},
+      querySelectorAll() {
+        return [];
+      },
+    },
+    MutationObserver: class {
+      constructor(callback: (mutations: unknown[]) => void) {
+        observerCallback = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+    setTimeout(callback: () => void) {
+      callback();
+    },
+  });
+
+  const callback = observerCallback as ((mutations: unknown[]) => void) | null;
+  assert.ok(callback);
+  callback([
+    { type: "attributes", attributeName: attr, target: attributeNode },
+    { type: "childList", addedNodes: [addedNode] },
+  ]);
+
+  assert.deepEqual(removed, [`node:${attr}`, `child:${attr}`]);
+});

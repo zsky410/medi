@@ -9,7 +9,7 @@ import { LocationSelect, destinationFilterTerm } from "@/components/location-sel
 import { PublicTripGrid } from "@/components/public-trip-grid";
 import { fetchPublicTrips } from "@/lib/public-trips";
 
-const DURATIONS = ["2-3 ngày", "4-5 ngày", "1 tuần+"];
+const POPULAR_DESTINATIONS = ["Đà Lạt", "Đà Nẵng", "Nha Trang", "Ninh Bình", "Hà Nội", "TP.HCM", "Huế", "Phú Quốc"];
 
 export default function ExplorePage() {
   const [destination, setDestination] = useState<string | undefined>();
@@ -41,10 +41,17 @@ export default function ExplorePage() {
         </div>
 
         <div className="flex flex-wrap gap-3 mb-8 items-center">
-          {DURATIONS.map((d) => (
-            <span key={d} className="px-4 py-2 rounded-full text-sm font-bold tab-inactive">
-              {d}
-            </span>
+          {POPULAR_DESTINATIONS.map((place) => (
+            <button
+              key={place}
+              type="button"
+              onClick={() => setDestination(place)}
+              className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${
+                destination === place ? "tab-active" : "tab-inactive"
+              }`}
+            >
+              {place}
+            </button>
           ))}
         </div>
 

@@ -5,7 +5,7 @@ import type { PublicTripListItemDto } from "@medi/types";
 import { Plane } from "lucide-react";
 import {
   PUBLIC_TRIP_CARD_COLORS,
-  PUBLIC_TRIP_FALLBACK_COVER,
+  publicTripPreviewCover,
   publicTripDurationLabel,
 } from "@/lib/public-trips";
 
@@ -32,6 +32,7 @@ export function PublicTripGrid({
 
 function PublicTripCard({ trip, color }: { trip: PublicTripListItemDto; color: string }) {
   const duration = publicTripDurationLabel(trip.startDate, trip.endDate);
+  const previewCover = publicTripPreviewCover(trip);
 
   return (
     <Link
@@ -41,7 +42,7 @@ function PublicTripCard({ trip, color }: { trip: PublicTripListItemDto; color: s
       <div className="relative h-48 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={trip.coverImage ?? PUBLIC_TRIP_FALLBACK_COVER}
+          src={previewCover}
           alt={trip.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />

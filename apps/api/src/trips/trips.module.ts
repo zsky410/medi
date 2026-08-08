@@ -1,12 +1,13 @@
 import { Module } from "@nestjs/common";
 import { TripsController } from "./trips.controller";
 import { PublicController } from "./public.controller";
+import { TripMessagesService } from "./trip-messages.service";
 import { TripsService } from "./trips.service";
 import { TripAccessService } from "./trip-access.service";
 
 @Module({
   controllers: [TripsController, PublicController],
-  providers: [TripsService, TripAccessService],
+  providers: [TripsService, TripAccessService, TripMessagesService],
   exports: [TripAccessService, TripsService],
 })
 export class TripsModule {}

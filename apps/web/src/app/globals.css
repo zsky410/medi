@@ -87,6 +87,13 @@ body {
   0% { transform: scale(2) rotate(-15deg); opacity: 0; }
   100% { transform: scale(1) rotate(-15deg); opacity: 1; }
 }
+@keyframes chat-notify {
+  0%, 100% { transform: translateY(0) scale(1); box-shadow: 0 12px 32px rgba(255,107,44,0.38); }
+  18% { transform: translateY(-3px) scale(1.06); box-shadow: 0 14px 42px rgba(255,107,44,0.52); }
+  36% { transform: translateY(0) scale(0.98); }
+  54% { transform: translateY(-2px) scale(1.04); }
+  72% { transform: translateY(0) scale(1); }
+}
 
 .ticker-track {
   animation: ticker 28s linear infinite;
@@ -105,6 +112,9 @@ body {
 }
 .btn-primary-glow {
   animation: pulse-glow 3s ease-in-out infinite;
+}
+.animate-chat-notify {
+  animation: chat-notify 1.2s ease-in-out infinite;
 }
 
 ::-webkit-scrollbar {

@@ -23,8 +23,8 @@ export class ShopService {
     private readonly trips: TripsService,
   ) {}
 
-  private guideDistributionMode(price?: number | null): "SHOP_FREE" | "SHOP_PAID" {
-    return (price ?? 0) > 0 ? "SHOP_PAID" : "SHOP_FREE";
+  private guideDistributionMode(price?: number | null): "EXPLORE_FREE" | "SHOP_PAID" {
+    return (price ?? 0) > 0 ? "SHOP_PAID" : "EXPLORE_FREE";
   }
 
   private toListItem(
@@ -65,7 +65,7 @@ export class ShopService {
   }
 
   async listPublished(limit = 24, offset = 0): Promise<GuidesListDto> {
-    const where = { published: true, trip: { visibility: "PUBLIC" as const } };
+    const where = { published: true, price: { gt: 0 }, trip: { visibility: "PUBLIC" as const } };
     const [guides, total] = await Promise.all([
       this.prisma.guide.findMany({
         where,
@@ -124,7 +124,7 @@ export class ShopService {
       },
     });
     const isOwner = guide?.creatorId === userId;
-    if (!guide || (!isOwner && (!guide.published || guide.trip.visibility !== "PUBLIC"))) {
+    if (!guide || (!isOwner && (!guide.published || guide.price <= 0 || guide.trip.visibility !== "PUBLIC"))) {
       throw new NotFoundException("Không tìm thấy guide");
     }
 
@@ -244,7 +244,7 @@ export class ShopService {
       where: { id: guideId },
       include: { trip: true },
     });
-    if (!guide || !guide.published || guide.trip.visibility !== "PUBLIC") {
+    if (!guide || !guide.published || guide.price <= 0 || guide.trip.visibility !== "PUBLIC") {
       throw new NotFoundException("Không tìm thấy guide");
     }
     if (guide.creatorId === userId) {

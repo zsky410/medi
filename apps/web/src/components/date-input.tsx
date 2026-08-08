@@ -11,10 +11,21 @@ function cx(...classes: (string | false | undefined)[]) {
 interface DateInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "onChange"> {
   value: string;
   onChange: (isoDate: string) => void;
+  emptyText?: string;
 }
 
 /** Date picker that displays dd/mm/yyyy while storing yyyy-mm-dd for the API. */
-export function DateInput({ id, value, onChange, required, className, min, max, disabled }: DateInputProps) {
+export function DateInput({
+  id,
+  value,
+  onChange,
+  required,
+  className,
+  min,
+  max,
+  disabled,
+  emptyText = "dd/mm/yyyy",
+}: DateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openPicker() {
@@ -46,7 +57,7 @@ export function DateInput({ id, value, onChange, required, className, min, max, 
         className,
       )}
     >
-      {value ? formatDate(value) : "dd/mm/yyyy"}
+      {value ? formatDate(value) : emptyText || "\u00a0"}
       <Calendar
         size={16}
         className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-brand-500"
